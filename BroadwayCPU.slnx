@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="BroadwayCPU.vcxproj" Id="6d1320ff-5b9c-4886-bfac-82975d9b5a89" />
+</Solution>
