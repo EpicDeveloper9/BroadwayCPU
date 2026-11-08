@@ -21,16 +21,27 @@
   <ItemGroup>
     <ClInclude Include="cpu.hpp" />
     <ClInclude Include="decoder.hpp" />
+    <ClInclude Include="disc_image.hpp" />
+    <ClInclude Include="executable_loader.hpp" />
     <ClInclude Include="exceptions.hpp" />
     <ClInclude Include="instruction.hpp" />
     <ClInclude Include="memory.hpp" />
     <ClInclude Include="registers.hpp" />
+    <ClInclude Include="video_frame.hpp" />
+    <ClInclude Include="video_output.hpp" />
+    <ClInclude Include="hardware_interface.hpp" />
+    <ClInclude Include="gx.hpp" />
+    <ClInclude Include="wii_boot.hpp" />
+    <ClInclude Include="wii_firmware.hpp" />
+    <ClInclude Include="arm_elf.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="branches.cpp" />
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="decoder.cpp" />
+    <ClCompile Include="disc_image.cpp" />
     <ClCompile Include="exceptions.cpp" />
+    <ClCompile Include="executable_loader.cpp" />
     <ClCompile Include="floating_point.cpp" />
     <ClCompile Include="integer.cpp" />
     <ClCompile Include="loads_stores.cpp" />
@@ -39,6 +50,12 @@
     <ClCompile Include="paired_single.cpp" />
     <ClCompile Include="registers.cpp" />
     <ClCompile Include="system.cpp" />
+    <ClCompile Include="video_frame.cpp" />
+    <ClCompile Include="video_output.cpp" />
+    <ClCompile Include="gx.cpp" />
+    <ClCompile Include="wii_boot.cpp" />
+    <ClCompile Include="wii_firmware.cpp" />
+    <ClCompile Include="arm_elf.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -102,7 +119,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;Shell32.lib;Ole32.lib;D2D1.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Manifest>
@@ -121,7 +138,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;Shell32.lib;Ole32.lib;D2D1.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Manifest>
@@ -138,7 +155,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;Shell32.lib;Ole32.lib;D2D1.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Manifest>
@@ -157,7 +174,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comdlg32.lib;Comctl32.lib;Shell32.lib;Ole32.lib;D2D1.lib;Bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Manifest>

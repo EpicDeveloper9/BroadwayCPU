@@ -3,7 +3,8 @@
 
 namespace Broadway {
 enum class InstructionType : uint8_t {
-    Unknown, Integer, Branch, LoadStore, Compare, System, FloatingPoint, PairedSingle
+    Unknown, Invalid, Unsupported, Integer, Branch, LoadStore, Compare, System,
+    FloatingPoint, PairedSingle
 };
 
 struct Instruction {
@@ -20,5 +21,10 @@ struct Instruction {
     bool absolute = false;
     bool oe = false;
     uint8_t rc = 0;
+    bool recognized = false;
+    bool validityKnown = false;
+    bool validEncoding = false;
+    bool dispatchable = false;
+    bool implemented = false;
 };
 }

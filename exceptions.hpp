@@ -6,7 +6,7 @@
 namespace Broadway {
 enum class ExceptionKind : uint8_t {
     UnimplementedInstruction, InvalidInstruction, DataStorage, InstructionStorage,
-    Alignment, Program, SystemCall
+    Alignment, Program, SystemCall, FloatingPointUnavailable
 };
 
 class CPUException : public std::runtime_error {

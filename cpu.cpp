@@ -5,7 +5,7 @@
 namespace Broadway {
 CPU::CPU(size_t memorySize) : memory(memorySize) { Reset(); }
 void CPU::Reset() {
-    registers.Reset(); halted = false; instructionCounter = 0; lastInstructionPC = 0;
+    registers.Reset(); halted = false; instructionCounter = 0; lastInstructionPC = 0; breakpointHit.reset();
 }
 void CPU::Step() {
     if (halted) return;
@@ -25,15 +25,33 @@ void CPU::Step() {
           << "  " << std::setw(8) << raw << "  " << Decoder::Name(ins);
         traceCallback(s.str());
     }
-    Execute(ins);
+    try {
+        if (ins.type == InstructionType::Invalid)
+            throw CPUException(ExceptionKind::InvalidInstruction, lastInstructionPC, "Invalid PowerPC instruction encoding");
+        if (!ins.implemented)
+            throw CPUException(ExceptionKind::UnimplementedInstruction, lastInstructionPC,
+                               std::string("Unsupported instruction: ") + Decoder::Name(ins));
+        Execute(ins);
+    } catch (const CPUException&) {
+        registers.PC = lastInstructionPC;
+        throw;
+    }
     ++instructionCounter;
 }
 void CPU::Run(uint32_t count) {
-    for (uint32_t n=0; n<count && !halted; ++n) Step();
+    breakpointHit.reset();
+    for (uint32_t n=0; n<count && !halted; ++n) {
+        if (breakpoints.contains(registers.PC)) { breakpointHit = registers.PC; return; }
+        Step();
+    }
 }
 void CPU::RunUntilHalt(uint64_t maxInstructions) {
+    breakpointHit.reset();
     uint64_t n=0;
-    while (!halted && n<maxInstructions) { Step(); ++n; }
+    while (!halted && n<maxInstructions) {
+        if (breakpoints.contains(registers.PC)) { breakpointHit = registers.PC; return; }
+        Step(); ++n;
+    }
 }
 void CPU::Execute(const Instruction& i) {
     switch (i.type) {
@@ -43,8 +61,12 @@ void CPU::Execute(const Instruction& i) {
     case InstructionType::System: ExecuteSystem(i); break;
     case InstructionType::FloatingPoint: ExecuteFloatingPoint(i); break;
     case InstructionType::PairedSingle: ExecutePairedSingle(i); break;
+    case InstructionType::Unsupported:
+        throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Unsupported PowerPC instruction");
+    case InstructionType::Invalid:
+        throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid PowerPC instruction encoding");
     default:
-        throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Unknown or unsupported PowerPC instruction");
+        throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Unsupported PowerPC instruction");
     }
 }
 void CPU::SetCRField(unsigned field, uint32_t result) {
@@ -53,6 +75,6 @@ void CPU::SetCRField(unsigned field, uint32_t result) {
     registers.SetCRField(field,v);
 }
 void CPU::UpdateCR0(uint32_t result) { SetCRField(0,result); }
-void CPU::UpdateCR1() { registers.SetCRField(1, registers.FPSCR & 0xF); }
+void CPU::UpdateCR1() { registers.SetCRField(1, registers.FPSCR >> 28); }
 void CPU::SetOverflow(bool overflow) { registers.SetXEROverflow(overflow); }
 }

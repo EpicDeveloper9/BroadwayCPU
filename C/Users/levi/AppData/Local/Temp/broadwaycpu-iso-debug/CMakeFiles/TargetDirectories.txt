@@ -1,0 +1,6 @@
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/broadwaycpu_core.dir
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/broadwaycpu_tests.dir
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/gh3_startup_probe.dir
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/test.dir
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/edit_cache.dir
+/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-iso-debug/CMakeFiles/rebuild_cache.dir

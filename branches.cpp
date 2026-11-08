@@ -40,11 +40,23 @@ void CPU::ExecuteBranch(const Instruction& ins) {
     }
     if(op==19) {
         const uint32_t xo=(raw>>1)&0x3FFu;
+        if (xo == 150) return; // Prior work is committed at each interpreter boundary.
         const uint32_t bo=(raw>>21)&31u, bi=(raw>>16)&31u;
         if(xo==0) { // mcrf
             const unsigned crfd=(raw>>23)&7u;
             const unsigned crfs=(raw>>18)&7u;
             registers.SetCRField(crfd,registers.GetCRField(crfs));
+            return;
+        }
+        if(xo==50) {
+            if (registers.MSR & CPURegisters::MSR_PR)
+                throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged rfi executed in user mode");
+            registers.MSR = registers.SRR1;
+            // SRR0 contains the restart address. Exception entry normally
+            // supplies an aligned address; preserve its exact value here so
+            // a malformed/restored state is reported as an instruction-fetch
+            // alignment fault instead of being silently rounded down.
+            registers.PC = registers.SRR0;
             return;
         }
         if(xo==16) { // bclr

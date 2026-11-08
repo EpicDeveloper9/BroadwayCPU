@@ -31,15 +31,43 @@ void CPU::ExecuteLoadStore(const Instruction& ins) {
         try { memory.Write16(a,v); }
         catch(const std::exception&) { throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,"Halfword store outside mapped memory"); }
     };
+    auto read8=[&](uint32_t a) {
+        try { return memory.Read8(a); }
+        catch(const std::exception&) { throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,"Byte load outside mapped memory"); }
+    };
+    auto write8=[&](uint32_t a,uint8_t v) {
+        try { memory.Write8(a,v); }
+        catch(const std::exception&) { throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,"Byte store outside mapped memory"); }
+    };
+    if (op == 31) {
+        const unsigned xo = (raw >> 1) & 0x3FFu;
+        if (xo == 534 || xo == 662 || xo == 790 || xo == 918) {
+            const uint32_t ea = (ra ? g[ra] : 0u) + g[ins.rb];
+            if (xo == 534 || xo == 662) {
+                const uint32_t value = xo == 534 ? read32(ea) : g[rt];
+                const uint32_t reversed = ((value & 0x000000FFu) << 24) |
+                    ((value & 0x0000FF00u) << 8) | ((value & 0x00FF0000u) >> 8) |
+                    ((value & 0xFF000000u) >> 24);
+                if (xo == 534) g[rt] = reversed;
+                else write32(ea, reversed);
+            } else {
+                const uint16_t value = xo == 790 ? read16(ea) : uint16_t(g[rt]);
+                const uint16_t reversed = uint16_t((value << 8) | (value >> 8));
+                if (xo == 790) g[rt] = reversed;
+                else write16(ea, reversed);
+            }
+            return;
+        }
+    }
     switch(op) {
     case 32: g[rt]=read32(address); break;
     case 33: if(!ra||ra==rt) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid lwzu operands"); g[rt]=read32(address); g[ra]=address; break;
-    case 34: g[rt]=memory.Read8(address); break;
-    case 35: if(!ra||ra==rt) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid lbzu operands"); g[rt]=memory.Read8(address); g[ra]=address; break;
+    case 34: g[rt]=read8(address); break;
+    case 35: if(!ra||ra==rt) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid lbzu operands"); g[rt]=read8(address); g[ra]=address; break;
     case 36: write32(address,g[rt]); break;
     case 37: if(!ra) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid stwu operands"); write32(address,g[rt]); g[ra]=address; break;
-    case 38: memory.Write8(address,uint8_t(g[rt])); break;
-    case 39: if(!ra) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid stbu operands"); memory.Write8(address,uint8_t(g[rt])); g[ra]=address; break;
+    case 38: write8(address,uint8_t(g[rt])); break;
+    case 39: if(!ra) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid stbu operands"); write8(address,uint8_t(g[rt])); g[ra]=address; break;
     case 40: g[rt]=read16(address); break;
     case 41: if(!ra||ra==rt) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid lhzu operands"); g[rt]=read16(address); g[ra]=address; break;
     case 42: g[rt]=uint32_t(int32_t(int16_t(read16(address)))); break;
@@ -47,6 +75,7 @@ void CPU::ExecuteLoadStore(const Instruction& ins) {
     case 44: write16(address,uint16_t(g[rt])); break;
     case 45: if(!ra) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Invalid sthu operands"); write16(address,uint16_t(g[rt])); g[ra]=address; break;
     case 46:
+        if (ra != 0 && ra >= rt) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"lmw destination range includes its base register");
         for(uint32_t r=rt;r<32;++r) g[r]=read32(address+(r-rt)*4u);
         break;
     case 47:

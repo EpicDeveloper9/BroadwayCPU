@@ -1,33 +1,46 @@
-BROADWAYCPU STAGE 4 - INSTRUCTION COVERAGE NOTES
-================================================
+BROADWAYCPU INSTRUCTION COVERAGE NOTES
+=====================================
 
-This is a partial interpreter implementation for the 32-bit PowerPC / Gekko
-family. It is not a complete or validated IBM 750CL implementation.
+This is an in-progress 32-bit Broadway/Gekko-derived PowerPC interpreter. The
+core is not a complete or validated IBM 750CL implementation. Build success
+and passing tests only verify the implemented source paths and test vectors.
 
-Implemented families (coverage varies by encoding and edge case):
-- D-form integer arithmetic/logical immediates and compare immediates.
-- Rotate/mask word operations.
-- Selected X-form arithmetic, carry, overflow, multiply/divide, shifts,
-  sign extension, logical operations and count-leading-zero.
-- CR field compare/move and common CR boolean operations.
-- Unconditional, conditional, LR and CTR branch forms.
-- D-form integer loads/stores, multiple-word transfers and common indexed
-  byte/halfword/word load/store forms.
-- String word loads/stores (LSWI/LSWX/STSWI/STSWX; test additional encodings).
-- Basic SPR access for XER, LR and CTR.
-- Scalar floating-point arithmetic, compares and basic FP memory forms.
-- Selected Gekko paired-single arithmetic/merge forms.
+Implemented and tested portions currently include:
+- Selected D-form integer arithmetic/logical immediates, compares and
+  rotate/mask operations.
+- Selected X-form arithmetic, carry/overflow, multiply/divide, shifts, sign
+  extension, logical operations and CR boolean operations.
+- Direct, conditional, LR and CTR branch forms.
+- Integer D-form and indexed memory operations, string transfers, and
+  byte-reversed indexed operations.
+- Scalar floating-point arithmetic, comparisons, displacement and selected
+  indexed memory operations.
+- Selected paired-single arithmetic, merge, comparisons, and quantized
+  operations using GQR state.
+- Privileged MSR operations, rfi, selected SPRs, segment registers, GQR/HID2,
+  SPRG, BAT register storage, and externally clocked time-base state.
 
-Known incomplete / not validated:
-- Full PowerPC 750CL opcode matrix and exact invalid-encoding rules.
-- PSQ quantized paired-single loads/stores and full GQR semantics.
-- Complete FPSCR sticky flags, exception enables, rounding modes and NaN rules.
-- Full SPR, segment-register, BAT, SDR1, MMU and TLB instruction behaviour.
-- Correct cache, reservation, memory-coherency and bus semantics.
-- Complete exception delivery/vectoring, privilege checks and MSR transitions.
-- Cycle timing, interrupts, external signals, and Wii hardware integration.
-- Instruction-specific corner cases and full architecture test-suite validation.
+Important incomplete architectural behavior:
+- Broad instruction encoding and reserved-field coverage is incomplete.
+- FPSCR exception flags/enables and several IEEE-754 corner cases need a full
+  architecture audit. Reciprocal estimates and conversion edge cases need
+  independently sourced reference vectors.
+- BAT values are stored but are not used for effective-to-physical address
+  translation. Page-table/TLB translation, protection, and MMU exceptions are
+  not implemented.
+- Exception conditions are reported to the host as CPUException objects;
+  architectural exception entry, vectoring, SRR capture, DAR/DSISR updates,
+  priority and interrupt delivery remain incomplete.
+- Cache operations, reservation/coherency behavior, and bus-visible ordering
+  are not modeled. The flat memory array is not a hardware memory subsystem.
+- Time-base state can be read and written, but the emulated system must clock
+  it; no bus-clock-derived time base or decrementer interrupt is implemented.
+- Unsupported SPR/TBR selectors remain explicit exceptions. Not every Gekko
+  implementation register has state or semantics.
+- Dynamic executable modules have not been comprehensively identified or
+  loaded, and Wii hardware services are not implemented by this CPU core.
 
-A passing local regression suite only proves the included test cases. It does
-not establish compatibility with Wii software. Keep unimplemented instructions
-as explicit exceptions rather than silently treating them as successful NOPs.
+The Guitar Hero III static scan is documented in
+GH3_RGHP52_STATIC_ANALYSIS.md. Static DOL word counts can include embedded
+data and do not prove runtime execution. Keep architectural gaps explicit;
+do not silently treat an unimplemented instruction as a successful no-op.

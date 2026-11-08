@@ -8,9 +8,41 @@ namespace Broadway {
 namespace {
 uint32_t FBits(uint32_t raw, unsigned shift) { return (raw >> shift) & 31u; }
 float ToSingle(double x) { return static_cast<float>(x); }
+bool PairedSingleEnabled(const CPURegisters& registers) {
+    return (registers.HID2 & CPURegisters::HID2_PSE) != 0;
+}
+float GetPS0(double value) {
+    return std::bit_cast<float>(uint32_t(std::bit_cast<uint64_t>(value) >> 32));
+}
+double PutPair(float ps0, float ps1) {
+    const uint64_t bits = (uint64_t(std::bit_cast<uint32_t>(ps0)) << 32) |
+        std::bit_cast<uint32_t>(ps1);
+    return std::bit_cast<double>(bits);
+}
+int32_t ConvertToInteger(double value, bool truncate, uint32_t fpscr) {
+    if (!std::isfinite(value)) return std::numeric_limits<int32_t>::min();
+    double rounded = value;
+    if (truncate) {
+        rounded = std::trunc(value);
+    } else {
+        switch (fpscr & 3u) {
+        case 0: rounded = std::nearbyint(value); break;
+        case 1: rounded = std::trunc(value); break;
+        case 2: rounded = std::ceil(value); break;
+        case 3: rounded = std::floor(value); break;
+        }
+    }
+    if (rounded < static_cast<double>(std::numeric_limits<int32_t>::min()) ||
+        rounded >= 2147483648.0)
+        return std::numeric_limits<int32_t>::min();
+    return static_cast<int32_t>(rounded);
+}
 }
 
 void CPU::ExecuteFloatingPoint(const Instruction& ins) {
+    if ((registers.MSR & CPURegisters::MSR_FP) == 0)
+        throw CPUException(ExceptionKind::FloatingPointUnavailable,lastInstructionPC,
+                           "Floating-point instruction while MSR[FP] is clear");
     const uint32_t raw=ins.raw, op=ins.opcode;
     const unsigned frt=FBits(raw,21), fra=FBits(raw,16), frb=FBits(raw,11), frc=FBits(raw,6);
     auto& f=registers.FPR;
@@ -30,15 +62,51 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
         if((ea&(alignment-1u))!=0) throw CPUException(ExceptionKind::Alignment,lastInstructionPC,"Unaligned floating-point memory access");
         try {
             if(store) {
-                if(single) memory.Write32(ea,std::bit_cast<uint32_t>(static_cast<float>(f[frt])));
+                if(single) {
+                    const float value = PairedSingleEnabled(registers) ? GetPS0(f[frt]) : static_cast<float>(f[frt]);
+                    memory.Write32(ea,std::bit_cast<uint32_t>(value));
+                }
                 else memory.Write64(ea,std::bit_cast<uint64_t>(f[frt]));
             } else {
-                if(single) f[frt]=static_cast<double>(std::bit_cast<float>(memory.Read32(ea)));
+                if(single) {
+                    const float value = std::bit_cast<float>(memory.Read32(ea));
+                    f[frt] = PairedSingleEnabled(registers) ? PutPair(value, value) : static_cast<double>(value);
+                }
                 else f[frt]=std::bit_cast<double>(memory.Read64(ea));
             }
         } catch(const std::exception&) { throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,"Floating-point memory access outside mapped memory"); }
         if(update) registers.GPR[fra]=ea;
         return;
+    }
+
+    if (op == 31) {
+        const unsigned xo = (raw >> 1) & 0x3FFu;
+        const bool load = xo == 535 || xo == 567 || xo == 599 || xo == 631;
+        const bool single = xo == 535 || xo == 567 || xo == 663 || xo == 695;
+        const bool update = xo == 567 || xo == 631 || xo == 695 || xo == 759;
+        if (load || xo == 663 || xo == 695 || xo == 727 || xo == 759) {
+            if (update && fra == 0)
+                throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Indexed floating-point update form requires nonzero RA");
+            const uint32_t ea = (fra ? registers.GPR[fra] : 0u) + registers.GPR[frb];
+            const unsigned alignment = single ? 4u : 8u;
+            if ((ea & (alignment - 1u)) != 0)
+                throw CPUException(ExceptionKind::Alignment,lastInstructionPC,"Unaligned indexed floating-point memory access");
+            try {
+                if (load) {
+                    if (single) {
+                        const float value = std::bit_cast<float>(memory.Read32(ea));
+                        f[frt] = PairedSingleEnabled(registers) ? PutPair(value,value) : static_cast<double>(value);
+                    } else f[frt] = std::bit_cast<double>(memory.Read64(ea));
+                } else if (single) {
+                    const float value = PairedSingleEnabled(registers) ? GetPS0(f[frt]) : static_cast<float>(f[frt]);
+                    memory.Write32(ea,std::bit_cast<uint32_t>(value));
+                } else memory.Write64(ea,std::bit_cast<uint64_t>(f[frt]));
+            } catch (const std::exception&) {
+                throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,"Indexed floating-point memory access outside mapped memory");
+            }
+            if (update) registers.GPR[fra] = ea;
+            return;
+        }
     }
 
     if(op==63 && ((raw>>1)&0x3FFu)==0) { // fcmpu
@@ -61,22 +129,25 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
 
     if(op==59) { // single-precision A-form arithmetic
         const unsigned xo=(raw>>1)&31u;
-        const double a=ToSingle(f[fra]), b=ToSingle(f[frb]), c=ToSingle(f[frc]);
-        double v=0;
+        const bool paired = PairedSingleEnabled(registers);
+        const double a=ToSingle(paired ? GetPS0(f[fra]) : f[fra]);
+        const double b=ToSingle(paired ? GetPS0(f[frb]) : f[frb]);
+        const double c=ToSingle(paired ? GetPS0(f[frc]) : f[frc]);
+        float v=0.0f;
         switch(xo) {
         case 18: v=ToSingle(a/b); break;       // fdivs
         case 20: v=ToSingle(a-b); break;       // fsubs
         case 21: v=ToSingle(a+b); break;       // fadds
         case 22: v=ToSingle(std::sqrt(b)); break; // fsqrts
-        case 24: v=ToSingle(1.0/b); break;      // fres approximation
+        case 24: v=ToSingle(1.0/b); break;      // fres estimate
         case 25: v=ToSingle(a*c); break;       // fmuls
-        case 28: v=ToSingle(a*c-b); break;     // fmsubs
-        case 29: v=ToSingle(a*c+b); break;     // fmadds
-        case 30: v=ToSingle(-(a*c-b)); break;  // fnmsubs
-        case 31: v=ToSingle(-(a*c+b)); break;  // fnmadds
+        case 28: v=std::fma(float(a),float(c),-float(b)); break; // fmsubs
+        case 29: v=std::fma(float(a),float(c),float(b)); break; // fmadds
+        case 30: v=-std::fma(float(a),float(c),-float(b)); break;
+        case 31: v=-std::fma(float(a),float(c),float(b)); break;
         default: throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Unsupported single-precision FP A-form opcode");
         }
-        f[frt]=v; recordFP(); return;
+        f[frt]=paired ? PutPair(v,v) : static_cast<double>(v); recordFP(); return;
     }
 
     if(op==63) {
@@ -98,12 +169,17 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
         const unsigned xo=(raw>>1)&0x3FFu;
         double v=0;
         switch(xo) {
+        case 38: { // mtfsb1; PowerPC bit numbers are MSB-first and FPSCR[1:2] are read-only summaries.
+            const unsigned bit = frt;
+            if (bit != 1 && bit != 2) registers.FPSCR |= 1u << (31u - bit);
+            recordFP(); return;
+        }
         case 12: v=ToSingle(f[frb]); break;                    // frsp
-        case 14: v=static_cast<double>(static_cast<int32_t>(f[frb])); break; // fctiw (simplified result representation)
-        case 15: v=static_cast<double>(static_cast<int32_t>(std::trunc(f[frb]))); break; // fctiwz
+        case 14: v=std::bit_cast<double>(0xFFF8000000000000ull | uint32_t(ConvertToInteger(f[frb],false,registers.FPSCR))); break;
+        case 15: v=std::bit_cast<double>(0xFFF8000000000000ull | uint32_t(ConvertToInteger(f[frb],true,registers.FPSCR))); break;
         case 40: v=-f[frb]; break;                             // fneg
         case 72: v=f[frb]; break;                              // fmr
-        case 136: v=-f[frb]; break;                            // fnabs
+        case 136: v=-std::fabs(f[frb]); break;                 // fnabs
         case 264: v=std::fabs(f[frb]); break;                  // fabs
         case 583: { // mffs: FPSCR copied to low word of FPR
             const uint64_t bits=0xFFF8000000000000ull | registers.FPSCR;
@@ -123,7 +199,7 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
         case 20: v=f[fra]-f[frb]; break;                       // fsub
         case 21: v=f[fra]+f[frb]; break;                       // fadd
         case 22: v=std::sqrt(f[frb]); break;                   // fsqrt (alternate encoding)
-        case 23: v=(f[fra]>=0.0)?f[frc]:f[frb]; break;         // fsel
+        case 23: v=!std::signbit(f[fra])?f[frc]:f[frb]; break; // fsel
         case 25: v=f[fra]*f[frc]; break;                       // fmul
         case 28: v=f[fra]*f[frc]-f[frb]; break;               // fmsub
         case 29: v=f[fra]*f[frc]+f[frb]; break;               // fmadd

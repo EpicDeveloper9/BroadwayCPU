@@ -15,6 +15,13 @@ uint32_t PPCMask(unsigned mb, unsigned me) {
     return mask;
 }
 uint32_t SignExtend16(uint32_t v) { return uint32_t(int32_t(int16_t(v))); }
+bool HasOEForm(uint32_t xo) {
+    switch (xo) {
+    case 8: case 10: case 40: case 104: case 136: case 138: case 200: case 202:
+    case 232: case 234: case 235: case 266: case 459: case 491: return true;
+    default: return false;
+    }
+}
 }
 
 void CPU::ExecuteInteger(const Instruction& ins) {
@@ -93,7 +100,9 @@ void CPU::ExecuteInteger(const Instruction& ins) {
     default: throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Integer instruction not implemented");
     }
 
-    const uint32_t xo=(raw>>1)&0x1FFu;
+    const uint32_t fullXO=(raw>>1)&0x3FFu;
+    const uint32_t lowXO=fullXO&0x1FFu;
+    const uint32_t xo=HasOEForm(lowXO)?lowXO:fullXO;
     if (xo==0 || xo==32) { // cmp / cmpl
         const unsigned bf=(raw>>23)&7u;
         uint32_t cr=2;
@@ -109,6 +118,18 @@ void CPU::ExecuteInteger(const Instruction& ins) {
         return;
     }
     if (xo==19) { g[rt]=registers.CR; return; } // mfcr
+    if (xo==83) { // mfmsr is privileged on Broadway.
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mfmsr executed in user mode");
+        g[rt]=registers.MSR;
+        return;
+    }
+    if (xo==146) {
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mtmsr executed in user mode");
+        registers.MSR = g[rt];
+        return;
+    }
     if (xo==144) { // mtcrf
         const uint32_t fxm=(raw>>12)&0xFFu;
         for(unsigned field=0;field<8;++field)
@@ -187,7 +208,7 @@ void CPU::ExecuteInteger(const Instruction& ins) {
     default: break;
     }
 
-    const bool oe=(raw&0x400u)!=0;
+    const bool oe=ins.oe;
     const bool rc=(raw&1u)!=0;
     const bool oldCA=registers.GetXERCarry();
     uint32_t result=0;
@@ -196,6 +217,35 @@ void CPU::ExecuteInteger(const Instruction& ins) {
     int64_t signedWide=0;
 
     switch(xo) {
+    case 210: { // mtsr SR,rS
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mtsr executed in user mode");
+        registers.SR[ra & 0xFu] = g[rt];
+        return;
+    }
+    case 242: { // mtsrin rS,rB; segment index comes from EA[0:3]
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mtsrin executed in user mode");
+        registers.SR[g[rb] >> 28] = g[rt];
+        return;
+    }
+    case 595: // mfsr rD,SR
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mfsr executed in user mode");
+        result = registers.SR[ra & 0xFu];
+        break;
+    case 659: // mfsrin rD,rB
+        if (registers.MSR & CPURegisters::MSR_PR)
+            throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged mfsrin executed in user mode");
+        result = registers.SR[g[rb] >> 28];
+        break;
+    case 371: { // mftb: Gekko exposes TBL (268) and TBU (269) to user mode.
+        const uint32_t tbr = ((raw >> 16) & 31u) | ((raw >> 6) & 0x3E0u);
+        if (tbr == 268) result = uint32_t(registers.TimeBase);
+        else if (tbr == 269) result = uint32_t(registers.TimeBase >> 32);
+        else throw CPUException(ExceptionKind::Program,lastInstructionPC,"Unsupported TBR selected by mftb");
+        break;
+    }
     case 8: { uint64_t w=uint64_t(uint32_t(~a))+b+1ull; result=uint32_t(w); updateCarry=true; carry=(w>>32)!=0; arithmetic=true; signedWide=int64_t(int32_t(b))-int64_t(int32_t(a)); break; } // subfc
     case 10: { uint64_t w=uint64_t(a)+b; result=uint32_t(w); updateCarry=true; carry=(w>>32)!=0; arithmetic=true; signedWide=int64_t(int32_t(a))+int64_t(int32_t(b)); break; } // addc
     case 40: result=b-a; arithmetic=true; signedWide=int64_t(int32_t(b))-int64_t(int32_t(a)); break;
@@ -206,13 +256,13 @@ void CPU::ExecuteInteger(const Instruction& ins) {
     case 202: { uint64_t w=uint64_t(a)+uint64_t(oldCA); result=uint32_t(w); updateCarry=true; carry=(w>>32)!=0; arithmetic=true; signedWide=int64_t(int32_t(a))+int64_t(oldCA); break; } // addze
     case 232: { uint64_t w=uint64_t(uint32_t(~a))+0xFFFFFFFFull+uint64_t(oldCA); result=uint32_t(w); updateCarry=true; carry=(w>>32)!=0; arithmetic=true; signedWide=-int64_t(int32_t(a))-1+int64_t(oldCA); break; } // subfme
     case 234: { uint64_t w=uint64_t(a)+0xFFFFFFFFull+uint64_t(oldCA); result=uint32_t(w); updateCarry=true; carry=(w>>32)!=0; arithmetic=true; signedWide=int64_t(int32_t(a))-1+int64_t(oldCA); break; } // addme
-    case 24: result=((b&0x20u)!=0)?0u:(a<<(b&31u)); break; // slw
-    case 26: result=std::countl_zero(a); break; // cntlzw
-    case 28: result=a&b; break;
-    case 60: result=a&~b; break;
-    case 124: result=~(a|b); break;
-    case 412: result=a|~b; break;                    // orc
-    case 476: result=~(a&b); break;                  // nand
+    case 24: result=((b&0x20u)!=0)?0u:(g[rt]<<(b&31u)); break; // slw rA,rS,rB
+    case 26: result=std::countl_zero(g[rt]); break; // cntlzw rA,rS
+    case 28: result=g[rt]&b; break;
+    case 60: result=g[rt]&~b; break;
+    case 124: result=~(g[rt]|b); break;
+    case 412: result=g[rt]|~b; break;                    // orc
+    case 476: result=~(g[rt]&b); break;                  // nand
     case 75: result=uint32_t((int64_t(int32_t(a))*int64_t(int32_t(b)))>>32); break; // mulhw
     case 11: result=uint32_t((uint64_t(a)*uint64_t(b))>>32); break; // mulhwu
     case 459: { // divwu
@@ -227,40 +277,164 @@ void CPU::ExecuteInteger(const Instruction& ins) {
     }
     case 235: result=uint32_t(int64_t(int32_t(a))*int64_t(int32_t(b))); break; // mullw
     case 266: result=a+b; arithmetic=true; signedWide=int64_t(int32_t(a))+int64_t(int32_t(b)); break;
-    case 284: result=~(a^b); break;
-    case 316: result=a^b; break;
-    case 444: result=a|b; break;
-    case 536: result=((b&0x20u)!=0)?0u:(a>>(b&31u)); break;
+    case 284: result=~(g[rt]^b); break;
+    case 316: result=g[rt]^b; break;
+    case 444: result=g[rt]|b; break;
+    case 536: result=((b&0x20u)!=0)?0u:(g[rt]>>(b&31u)); break;
     case 792: { // sraw
-        const unsigned sh=b&63u; const int32_t sa=int32_t(a);
-        if(sh>=32) { result=sa<0?0xFFFFFFFFu:0u; carry=(sa<0 && a!=0); }
-        else { result=uint32_t(sa>>sh); if(sh && sa<0) carry=(a&((1u<<sh)-1u))!=0; }
+        const unsigned sh=b&63u; const int32_t sa=int32_t(g[rt]);
+        if(sh>=32) { result=sa<0?0xFFFFFFFFu:0u; carry=(sa<0 && g[rt]!=0); }
+        else { result=uint32_t(sa>>sh); if(sh && sa<0) carry=(g[rt]&((1u<<sh)-1u))!=0; }
         updateCarry=true; break;
     }
     case 824: { // srawi
-        const unsigned sh=(raw>>11)&31u; const int32_t sa=int32_t(a);
-        result=uint32_t(sa>>sh); if(sh && sa<0) carry=(a&((1u<<sh)-1u))!=0;
+        const unsigned sh=(raw>>11)&31u; const int32_t sa=int32_t(g[rt]);
+        result=uint32_t(sa>>sh); if(sh && sa<0) carry=(g[rt]&((1u<<sh)-1u))!=0;
         updateCarry=true; break;
     }
-    case 922: result=uint32_t(int32_t(int16_t(a))); break;
-    case 954: result=uint32_t(int32_t(int8_t(a))); break;
+    case 922: result=uint32_t(int32_t(int16_t(g[rt]))); break;
+    case 954: result=uint32_t(int32_t(int8_t(g[rt]))); break;
     case 339: { // mfspr
         const uint32_t spr=((raw>>16)&31u)|((raw>>6)&0x3E0u);
-        switch(spr) {
+        if (spr >= 912 && spr <= 919) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged GQR read");
+            result=registers.GQR[spr-912];
+        } else if (spr >= 528 && spr <= 535) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged IBAT read");
+            result=registers.IBAT[(spr-528)/2][(spr-528)%2];
+        } else if (spr >= 536 && spr <= 543) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DBAT read");
+            result=registers.DBAT[(spr-536)/2][(spr-536)%2];
+        } else switch(spr) {
         case 1: result=registers.XER; break;
         case 8: result=registers.LR; break;
         case 9: result=registers.CTR; break;
-        default: throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Read from unsupported SPR");
+        case 26: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SRR0 read"); result=registers.SRR0; break;
+        case 27: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SRR1 read"); result=registers.SRR1; break;
+        case 18: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DSISR read"); result=registers.DSISR; break;
+        case 19: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DAR read"); result=registers.DAR; break;
+        case 22: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DEC read"); result=registers.DEC; break;
+        case 25: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SDR1 read"); result=registers.SDR1; break;
+        case 272: case 273: case 274: case 275:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SPRG read");
+            result=registers.SPRG[spr-272]; break;
+        case 920:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID2 read");
+            result=registers.HID2; break;
+        case 1011:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID4 read");
+            result=registers.HID4; break;
+        case 1008:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID0 read");
+            result=registers.HID0; break;
+        case 1009:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID1 read");
+            result=registers.HID1; break;
+        case 921:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged WPAR read");
+            result=registers.WPAR; break;
+        case 952:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged MMCR0 read");
+            result=registers.MMCR0; break;
+        case 956:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged MMCR1 read");
+            result=registers.MMCR1; break;
+        case 953: case 954: case 957: case 958: {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged performance-counter read");
+            const unsigned index = spr == 953 ? 0u : spr == 954 ? 1u : spr == 957 ? 2u : 3u;
+            result=registers.PMC[index]; break;
+        }
+        case 1017:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged L2CR read");
+            result=registers.L2CR; break;
+        default:
+            if (spr >= 560 && spr <= 575) {
+                if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SPR read");
+                result=0; break;
+            }
+            throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Read from unsupported SPR");
         }
         break;
     }
     case 467: { // mtspr
         const uint32_t spr=((raw>>16)&31u)|((raw>>6)&0x3E0u);
-        switch(spr) {
+        if (spr >= 912 && spr <= 919) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged GQR write");
+            registers.GQR[spr-912]=g[rt];
+        } else if (spr >= 528 && spr <= 535) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged IBAT write");
+            registers.IBAT[(spr-528)/2][(spr-528)%2]=g[rt];
+        } else if (spr >= 536 && spr <= 543) {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DBAT write");
+            registers.DBAT[(spr-536)/2][(spr-536)%2]=g[rt];
+        } else switch(spr) {
         case 1: registers.XER=g[rt]; break;
         case 8: registers.LR=g[rt]; break;
         case 9: registers.CTR=g[rt]; break;
-        default: throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Write to unsupported SPR");
+        case 26: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SRR0 write"); registers.SRR0=g[rt]; break;
+        case 27: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SRR1 write"); registers.SRR1=g[rt]; break;
+        case 18: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DSISR write"); registers.DSISR=g[rt]; break;
+        case 19: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DAR write"); registers.DAR=g[rt]; break;
+        case 22: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged DEC write"); registers.DEC=g[rt]; break;
+        case 25: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SDR1 write"); registers.SDR1=g[rt]; break;
+        case 284: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged TBL write"); registers.TimeBase=(registers.TimeBase&0xFFFFFFFF00000000ull)|g[rt]; break;
+        case 285: if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged TBU write"); registers.TimeBase=(uint64_t(g[rt])<<32)|(registers.TimeBase&0xFFFFFFFFull); break;
+        case 272: case 273: case 274: case 275:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SPRG write");
+            registers.SPRG[spr-272]=g[rt]; break;
+        case 920:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID2 write");
+            registers.HID2=g[rt]; break;
+        case 1011:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID4 write");
+            registers.HID4=g[rt]; break;
+        case 1008:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID0 write");
+            registers.HID0=g[rt]; break;
+        case 1009:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged HID1 write");
+            registers.HID1=g[rt]; break;
+        case 921:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged WPAR write");
+            registers.WPAR=g[rt] & 0xFFFFFFE0u; break;
+        case 952:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged MMCR0 write");
+            registers.MMCR0=g[rt]; break;
+        case 956:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged MMCR1 write");
+            registers.MMCR1=g[rt]; break;
+        case 953: case 954: case 957: case 958: {
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged performance-counter write");
+            const unsigned index = spr == 953 ? 0u : spr == 954 ? 1u : spr == 957 ? 2u : 3u;
+            registers.PMC[index]=g[rt]; break;
+        }
+        case 1017:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged L2CR write");
+            registers.L2CR=g[rt] & 0x7FFFFFFFu; break;
+        case 512:
+            if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SPR 512 write");
+            break;
+        default:
+            if (spr >= 560 && spr <= 575) {
+                if (registers.MSR & CPURegisters::MSR_PR) throw CPUException(ExceptionKind::Program,lastInstructionPC,"Privileged SPR write");
+                break;
+            }
+            throw CPUException(ExceptionKind::UnimplementedInstruction,lastInstructionPC,"Write to unsupported SPR");
+        }
+        return;
+    }
+    case 54: case 86: case 246: case 278: case 470: case 982:
+        // Data/instruction cache state is not modeled. These operations have no
+        // additional observable effect while all CPU accesses go to backing memory.
+        return;
+    case 1014: { // dcbz: clear the addressed 32-byte cache block in backing memory.
+        const uint32_t address = ((ra ? g[ra] : 0u) + g[rb]) & ~uint32_t(31u);
+        try {
+            for (unsigned offset = 0; offset < 32; offset += 4)
+                memory.Write32(address + offset, 0);
+        } catch (const std::exception&) {
+            throw CPUException(ExceptionKind::DataStorage,lastInstructionPC,
+                               "dcbz cache block extends outside mapped memory");
         }
         return;
     }
@@ -277,7 +451,11 @@ void CPU::ExecuteInteger(const Instruction& ins) {
                       signedWide<std::numeric_limits<int32_t>::min();
         SetOverflow(ov);
     }
-    g[rt]=result;
+    const bool logicalToRA = xo==24 || xo==26 || xo==28 || xo==60 || xo==124 ||
+        xo==284 || xo==316 || xo==412 || xo==444 || xo==476 || xo==536 ||
+        xo==792 || xo==824 || xo==922 || xo==954;
+    if (logicalToRA) g[ra]=result;
+    else g[rt]=result;
     if(rc) UpdateCR0(result);
 }
 }

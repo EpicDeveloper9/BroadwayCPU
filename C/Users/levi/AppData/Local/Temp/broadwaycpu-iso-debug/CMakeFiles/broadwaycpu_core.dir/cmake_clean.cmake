@@ -1,0 +1,39 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/broadwaycpu_core.dir/branches.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/branches.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/cpu.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/cpu.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/decoder.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/decoder.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/disc_image.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/disc_image.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/gx.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/gx.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/integer.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/integer.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/memory.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/memory.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/registers.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/registers.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/system.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/system.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o.d"
+  "libbroadwaycpu_core.a"
+  "libbroadwaycpu_core.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/broadwaycpu_core.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
