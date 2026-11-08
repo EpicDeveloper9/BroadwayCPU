@@ -7,6 +7,7 @@ set(BROADWAYCPU_CORE_SOURCES
     decoder.cpp
     disc_image.cpp
     exceptions.cpp
+    exi.cpp
     executable_loader.cpp
     floating_point.cpp
     integer.cpp

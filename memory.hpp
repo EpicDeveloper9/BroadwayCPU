@@ -17,14 +17,15 @@ public:
     void Write32(uint32_t address, uint32_t value);
     void Write64(uint32_t address, uint64_t value);
     void Clear();
-    void AttachMmioDevice(MemoryMappedDevice* device) noexcept { mmioDevice = device; }
+    void AttachMmioDevice(MemoryMappedDevice* device);
+    void AddMmioDevice(MemoryMappedDevice* device);
     size_t Size() const;
     void Validate(uint32_t address, size_t bytes) const { CheckBounds(address, bytes); }
     const std::vector<uint8_t>& Bytes() const { return data; }
 private:
     std::vector<uint8_t> data;
     std::vector<uint8_t> mmioStorage = std::vector<uint8_t>(0x10000, 0);
-    MemoryMappedDevice* mmioDevice = nullptr;
+    std::vector<MemoryMappedDevice*> mmioDevices;
     uint32_t NormalizeMmio(uint32_t address, size_t bytes) const;
     void CheckBounds(uint32_t address, size_t bytes) const;
 };

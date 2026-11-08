@@ -51,6 +51,7 @@ struct BGRAFrame {
 };
 
 BGRAFrame ConvertToBGRA8(const VideoFrame& frame);
+VideoFrame CreateDiagnosticVideoFrame(uint32_t width, uint32_t height, uint64_t frameNumber);
 
 // One-slot mailbox: producers may publish from another thread; consumers take
 // the newest complete frame. Shared ownership keeps a frame alive while the

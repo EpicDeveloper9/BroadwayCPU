@@ -6,6 +6,7 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
   /home/levi/source/repos/BroadwayCPU/decoder.hpp \
   /home/levi/source/repos/BroadwayCPU/exceptions.hpp \
   /home/levi/source/repos/BroadwayCPU/executable_loader.hpp \
+  /home/levi/source/repos/BroadwayCPU/exi.hpp \
   /home/levi/source/repos/BroadwayCPU/gx.hpp \
   /home/levi/source/repos/BroadwayCPU/hardware_interface.hpp \
   /home/levi/source/repos/BroadwayCPU/instruction.hpp \
@@ -367,6 +368,8 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/move.h:
 
+/home/levi/source/repos/BroadwayCPU/exi.hpp:
+
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_facets.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/ptr_traits.h:
@@ -399,14 +402,6 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_classes.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_lockfree_defines.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/charconv.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stringfwd.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/backward/binders.h:
-
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_ios.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_wait.h:
@@ -414,6 +409,12 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 /usr/include/sys/_locale.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cpp_type_traits.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/charconv.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/backward/binders.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stringfwd.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/erase_if.h:
 
@@ -427,17 +428,11 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stl_uninitialized.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/version.h:
-
 /usr/include/ctype.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fstream.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/exception_defines.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/nested_exception.h:
-
-/home/levi/source/repos/BroadwayCPU/gx.hpp:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/functexcept.h:
 
@@ -452,10 +447,6 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/x86_64-pc-cygwin/bits/os_defines.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/memory_resource.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_string.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/cstddef:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/cctype:
 
@@ -489,11 +480,19 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /home/levi/source/repos/BroadwayCPU/tools/gh3_startup_probe.cpp:
 
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_lockfree_defines.h:
+
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/localefwd.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/invoke.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_string.tcc:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/string_conversions.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/concurrence.h:
+
+/home/levi/source/repos/BroadwayCPU/executable_loader.hpp:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/x86_64-pc-cygwin/bits/atomic_word.h:
 
@@ -513,6 +512,16 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_base.h:
 
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/cstddef:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_string.h:
+
+/home/levi/source/repos/BroadwayCPU/gx.hpp:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/nested_exception.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/version.h:
+
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/system_error:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/aligned_buffer.h:
@@ -523,6 +532,10 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/char_traits.h:
 
+/home/levi/source/repos/BroadwayCPU/registers.hpp:
+
+/home/levi/source/repos/BroadwayCPU/cpu.hpp:
+
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/backward/auto_ptr.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cxxabi_forced.h:
@@ -530,10 +543,6 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/iterator_concepts.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ctime:
-
-/home/levi/source/repos/BroadwayCPU/registers.hpp:
-
-/home/levi/source/repos/BroadwayCPU/cpu.hpp:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/chrono.h:
 
@@ -692,9 +701,3 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o: /home/levi/sourc
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/hashtable_policy.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/atomicity.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/string_conversions.h:
-
-/home/levi/source/repos/BroadwayCPU/executable_loader.hpp:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/concurrence.h:

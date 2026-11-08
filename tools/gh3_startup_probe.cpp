@@ -1,6 +1,7 @@
 #include "../cpu.hpp"
 #include "../executable_loader.hpp"
 #include "../gx.hpp"
+#include "../exi.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -35,7 +36,9 @@ int main(int argc, char** argv) {
         Broadway::CPU cpu(32u * 1024u * 1024u);
         Broadway::VideoFrameMailbox frames;
         Broadway::GXProcessor gx(cpu.memory, frames);
+        Broadway::EXIController exi;
         cpu.memory.AttachMmioDevice(&gx);
+        cpu.memory.AddMmioDevice(&exi);
         const auto loaded = Broadway::ExecutableLoader::Load(cpu, bytes, Broadway::ExecutableFormat::Dol);
         std::cout << "Loaded " << loaded.formatName << " entry=0x" << std::hex << loaded.entryPoint
                   << " sections=" << std::dec << loaded.segmentCount

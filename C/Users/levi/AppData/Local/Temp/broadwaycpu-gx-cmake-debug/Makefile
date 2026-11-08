@@ -385,6 +385,30 @@ executable_loader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/broadwaycpu_core.dir/build.make CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.s
 .PHONY : executable_loader.cpp.s
 
+exi.o: exi.cpp.o
+.PHONY : exi.o
+
+# target to build an object file
+exi.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/broadwaycpu_core.dir/build.make CMakeFiles/broadwaycpu_core.dir/exi.cpp.o
+.PHONY : exi.cpp.o
+
+exi.i: exi.cpp.i
+.PHONY : exi.i
+
+# target to preprocess a source file
+exi.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/broadwaycpu_core.dir/build.make CMakeFiles/broadwaycpu_core.dir/exi.cpp.i
+.PHONY : exi.cpp.i
+
+exi.s: exi.cpp.s
+.PHONY : exi.s
+
+# target to generate assembly for a file
+exi.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/broadwaycpu_core.dir/build.make CMakeFiles/broadwaycpu_core.dir/exi.cpp.s
+.PHONY : exi.cpp.s
+
 floating_point.o: floating_point.cpp.o
 .PHONY : floating_point.o
 
@@ -830,6 +854,9 @@ help:
 	@echo "... executable_loader.o"
 	@echo "... executable_loader.i"
 	@echo "... executable_loader.s"
+	@echo "... exi.o"
+	@echo "... exi.i"
+	@echo "... exi.s"
 	@echo "... floating_point.o"
 	@echo "... floating_point.i"
 	@echo "... floating_point.s"

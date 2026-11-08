@@ -8,6 +8,7 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
   /home/levi/source/repos/BroadwayCPU/disc_image.hpp \
   /home/levi/source/repos/BroadwayCPU/exceptions.hpp \
   /home/levi/source/repos/BroadwayCPU/executable_loader.hpp \
+  /home/levi/source/repos/BroadwayCPU/exi.hpp \
   /home/levi/source/repos/BroadwayCPU/gx.hpp \
   /home/levi/source/repos/BroadwayCPU/hardware_interface.hpp \
   /home/levi/source/repos/BroadwayCPU/instruction.hpp \
@@ -314,6 +315,8 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 
 /usr/include/sys/_sigset.h:
 
+/usr/include/sys/_locale.h:
+
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/uses_allocator.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/predefined_ops.h:
@@ -434,10 +437,6 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/localefwd.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/move.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_facets_nonio.tcc:
-
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/version.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_facets.tcc:
@@ -453,6 +452,12 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/refwrap.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_classes.tcc:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/iterator_concepts.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cxxabi_forced.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ctime:
 
 /home/levi/source/repos/BroadwayCPU/disc_image.hpp:
 
@@ -494,15 +499,31 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/array:
 
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/locale_facets_nonio.tcc:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/move.h:
+
+/home/levi/source/repos/BroadwayCPU/exi.hpp:
+
 /home/levi/source/repos/BroadwayCPU/wii_firmware.hpp:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/iosfwd:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/cstdlib:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_string.tcc:
+/home/levi/source/repos/BroadwayCPU/video_frame.hpp:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stl_uninitialized.h:
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/concept_check.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_lockfree_defines.h:
+
+/usr/include/sys/_timeval.h:
+
+/home/levi/source/repos/BroadwayCPU/wii_boot.hpp:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fs_fwd.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_string.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/alloc_traits.h:
 
@@ -519,6 +540,10 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/nested_exception.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/exception_defines.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cpp_type_traits.h:
+
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fstream.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/x86_64-pc-cygwin/bits/gthr.h:
 
@@ -550,14 +575,6 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/shared_ptr.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/concept_check.h:
-
-/home/levi/source/repos/BroadwayCPU/video_frame.hpp:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/semaphore_base.h:
-
-/usr/include/machine/types.h:
-
 /home/levi/source/repos/BroadwayCPU/memory.hpp:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/tr1/gamma.tcc:
@@ -566,31 +583,17 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: /home/levi/source/repos/BroadwayCP
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/functexcept.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fstream.tcc:
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stl_uninitialized.h:
 
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cpp_type_traits.h:
+/usr/include/machine/types.h:
 
-/usr/include/sys/_locale.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/atomic_lockfree_defines.h:
-
-/usr/include/sys/_timeval.h:
-
-/home/levi/source/repos/BroadwayCPU/wii_boot.hpp:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fs_fwd.h:
+/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/semaphore_base.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/basic_ios.tcc:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/char_traits.h:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ext/type_traits.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/iterator_concepts.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/cxxabi_forced.h:
-
-/opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/ctime:
 
 /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fs_dir.h:
 

@@ -13,6 +13,7 @@ namespace Broadway {
 namespace {
 constexpr wchar_t kVideoClass[] = L"BroadwayCPU.VideoOutputWindow";
 constexpr wchar_t kVideoTitle[] = L"BroadwayCPU — Wii Video Output";
+constexpr wchar_t kDiagnosticVideoTitle[] = L"BroadwayCPU - VIDEO OUTPUT DIAGNOSTIC";
 constexpr UINT kNewFrameMessage = WM_APP + 41;
 
 bool RegisterVideoClass(HINSTANCE instance) {
@@ -71,6 +72,17 @@ void VideoOutputWindow::Show() {
     UpdateWindow(window);
 }
 
+void VideoOutputWindow::SetDiagnosticMode(bool enabled) {
+    if (window) SetWindowTextW(window, enabled ? kDiagnosticVideoTitle : kVideoTitle);
+}
+
+void VideoOutputWindow::ClearFrame() {
+    frames.Clear();
+    currentFrame.reset();
+    frameBitmap.Reset();
+    if (window) InvalidateRect(window, nullptr, FALSE);
+}
+
 void VideoOutputWindow::ToggleFullscreen() {
     if (!window) return;
     if (!fullscreen) {
@@ -123,7 +135,9 @@ LRESULT VideoOutputWindow::WindowProc(HWND hwnd, UINT message, WPARAM wp, LPARAM
     case WM_SIZE:
         if (renderTarget) {
             const UINT width = LOWORD(lp), height = HIWORD(lp);
-            if (width && height) renderTarget->Resize(D2D1::SizeU(width, height));
+            if (width && height &&
+                renderTarget->Resize(D2D1::SizeU(width, height)) == D2DERR_RECREATE_TARGET)
+                DestroyDeviceResources();
         }
         InvalidateRect(hwnd, nullptr, FALSE);
         return 0;
@@ -201,19 +215,26 @@ void VideoOutputWindow::DestroyDeviceResources() {
 void VideoOutputWindow::AcceptLatestFrame() {
     auto frame = frames.TakeLatest();
     if (!frame) return;
+    currentFrame = std::move(frame);
+    frameBitmap.Reset();
     if (!CreateDeviceResources()) return;
+    UploadCurrentFrame();
+}
+
+bool VideoOutputWindow::UploadCurrentFrame() {
+    if (!currentFrame || !CreateDeviceResources() || frameBitmap) return bool(frameBitmap);
     try {
-        BGRAFrame converted = ConvertToBGRA8(*frame);
-        if (converted.rowPitch > UINT_MAX) return;
+        BGRAFrame converted = ConvertToBGRA8(*currentFrame);
+        if (converted.rowPitch > UINT_MAX) return false;
         Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;
         const auto format = D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE);
         const HRESULT hr = renderTarget->CreateBitmap(D2D1::SizeU(converted.width, converted.height),
             converted.bytes.data(), UINT(converted.rowPitch), D2D1::BitmapProperties(format), &bitmap);
-        if (FAILED(hr)) return;
-        currentFrame = std::move(frame);
+        if (FAILED(hr)) return false;
         frameBitmap = std::move(bitmap);
+        return true;
     } catch (...) {
-        // A bad/oversized frame is dropped at the presentation boundary.
+        return false;
     }
 }
 
@@ -222,6 +243,7 @@ void VideoOutputWindow::Draw(HWND hwnd) {
     BeginPaint(hwnd, &paint);
     bool paintedWithDirect2D = false;
     if (CreateDeviceResources()) {
+        if (currentFrame && !frameBitmap) UploadCurrentFrame();
         renderTarget->BeginDraw();
         renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
         if (frameBitmap) {

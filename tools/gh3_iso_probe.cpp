@@ -3,6 +3,7 @@
 #include "../decoder.hpp"
 #include "../executable_loader.hpp"
 #include "../gx.hpp"
+#include "../exi.hpp"
 #include "../wii_boot.hpp"
 
 #include <algorithm>
@@ -91,7 +92,9 @@ int main(int argc, char** argv) {
         Broadway::CPU cpu(32u * 1024u * 1024u);
         Broadway::VideoFrameMailbox frames;
         Broadway::GXProcessor gx(cpu.memory, frames);
+        Broadway::EXIController exi;
         cpu.memory.AttachMmioDevice(&gx);
+        cpu.memory.AddMmioDevice(&exi);
         if (probeApploader) {
             try {
                 Broadway::WiiBootSession session(argv[1], commonKey);

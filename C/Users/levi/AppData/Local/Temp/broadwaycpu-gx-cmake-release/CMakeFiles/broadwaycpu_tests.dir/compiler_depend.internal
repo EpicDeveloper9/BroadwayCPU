@@ -9,6 +9,7 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o
  /home/levi/source/repos/BroadwayCPU/disc_image.hpp
  /home/levi/source/repos/BroadwayCPU/exceptions.hpp
  /home/levi/source/repos/BroadwayCPU/executable_loader.hpp
+ /home/levi/source/repos/BroadwayCPU/exi.hpp
  /home/levi/source/repos/BroadwayCPU/gx.hpp
  /home/levi/source/repos/BroadwayCPU/hardware_interface.hpp
  /home/levi/source/repos/BroadwayCPU/instruction.hpp

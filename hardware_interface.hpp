@@ -12,6 +12,7 @@ public:
     virtual bool Handles(uint32_t address, unsigned widthBytes) const noexcept = 0;
     virtual uint32_t Read(uint32_t address, unsigned widthBytes) = 0;
     virtual void Write(uint32_t address, unsigned widthBytes, uint32_t value) = 0;
+    virtual void Reset() {}
 };
 
 }

@@ -142,10 +142,24 @@ CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.s"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/levi/source/repos/BroadwayCPU/exceptions.cpp -o CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.s
 
+CMakeFiles/broadwaycpu_core.dir/exi.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
+CMakeFiles/broadwaycpu_core.dir/exi.cpp.o: /home/levi/source/repos/BroadwayCPU/exi.cpp
+CMakeFiles/broadwaycpu_core.dir/exi.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/broadwaycpu_core.dir/exi.cpp.o"
+	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/exi.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/exi.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/exi.cpp.o -c /home/levi/source/repos/BroadwayCPU/exi.cpp
+
+CMakeFiles/broadwaycpu_core.dir/exi.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/broadwaycpu_core.dir/exi.cpp.i"
+	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/levi/source/repos/BroadwayCPU/exi.cpp > CMakeFiles/broadwaycpu_core.dir/exi.cpp.i
+
+CMakeFiles/broadwaycpu_core.dir/exi.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/broadwaycpu_core.dir/exi.cpp.s"
+	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/levi/source/repos/BroadwayCPU/exi.cpp -o CMakeFiles/broadwaycpu_core.dir/exi.cpp.s
+
 CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o: /home/levi/source/repos/BroadwayCPU/executable_loader.cpp
 CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o -c /home/levi/source/repos/BroadwayCPU/executable_loader.cpp
 
 CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.i: cmake_force
@@ -159,7 +173,7 @@ CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o: /home/levi/source/repos/BroadwayCPU/floating_point.cpp
 CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o -c /home/levi/source/repos/BroadwayCPU/floating_point.cpp
 
 CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.i: cmake_force
@@ -173,7 +187,7 @@ CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/integer.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/integer.cpp.o: /home/levi/source/repos/BroadwayCPU/integer.cpp
 CMakeFiles/broadwaycpu_core.dir/integer.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/broadwaycpu_core.dir/integer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/broadwaycpu_core.dir/integer.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/integer.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/integer.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/integer.cpp.o -c /home/levi/source/repos/BroadwayCPU/integer.cpp
 
 CMakeFiles/broadwaycpu_core.dir/integer.cpp.i: cmake_force
@@ -187,7 +201,7 @@ CMakeFiles/broadwaycpu_core.dir/integer.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o: /home/levi/source/repos/BroadwayCPU/loads_stores.cpp
 CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.o -c /home/levi/source/repos/BroadwayCPU/loads_stores.cpp
 
 CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.i: cmake_force
@@ -201,7 +215,7 @@ CMakeFiles/broadwaycpu_core.dir/loads_stores.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/memory.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/memory.cpp.o: /home/levi/source/repos/BroadwayCPU/memory.cpp
 CMakeFiles/broadwaycpu_core.dir/memory.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/broadwaycpu_core.dir/memory.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/broadwaycpu_core.dir/memory.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/memory.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/memory.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/memory.cpp.o -c /home/levi/source/repos/BroadwayCPU/memory.cpp
 
 CMakeFiles/broadwaycpu_core.dir/memory.cpp.i: cmake_force
@@ -215,7 +229,7 @@ CMakeFiles/broadwaycpu_core.dir/memory.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o: /home/levi/source/repos/BroadwayCPU/paired_single.cpp
 CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.o -c /home/levi/source/repos/BroadwayCPU/paired_single.cpp
 
 CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.i: cmake_force
@@ -229,7 +243,7 @@ CMakeFiles/broadwaycpu_core.dir/paired_single.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/registers.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/registers.cpp.o: /home/levi/source/repos/BroadwayCPU/registers.cpp
 CMakeFiles/broadwaycpu_core.dir/registers.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/broadwaycpu_core.dir/registers.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/broadwaycpu_core.dir/registers.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/registers.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/registers.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/registers.cpp.o -c /home/levi/source/repos/BroadwayCPU/registers.cpp
 
 CMakeFiles/broadwaycpu_core.dir/registers.cpp.i: cmake_force
@@ -243,7 +257,7 @@ CMakeFiles/broadwaycpu_core.dir/registers.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/system.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/system.cpp.o: /home/levi/source/repos/BroadwayCPU/system.cpp
 CMakeFiles/broadwaycpu_core.dir/system.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/broadwaycpu_core.dir/system.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/broadwaycpu_core.dir/system.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/system.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/system.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/system.cpp.o -c /home/levi/source/repos/BroadwayCPU/system.cpp
 
 CMakeFiles/broadwaycpu_core.dir/system.cpp.i: cmake_force
@@ -257,7 +271,7 @@ CMakeFiles/broadwaycpu_core.dir/system.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o: /home/levi/source/repos/BroadwayCPU/video_frame.cpp
 CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.o -c /home/levi/source/repos/BroadwayCPU/video_frame.cpp
 
 CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.i: cmake_force
@@ -271,7 +285,7 @@ CMakeFiles/broadwaycpu_core.dir/video_frame.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/gx.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/gx.cpp.o: /home/levi/source/repos/BroadwayCPU/gx.cpp
 CMakeFiles/broadwaycpu_core.dir/gx.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/broadwaycpu_core.dir/gx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/broadwaycpu_core.dir/gx.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/gx.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/gx.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/gx.cpp.o -c /home/levi/source/repos/BroadwayCPU/gx.cpp
 
 CMakeFiles/broadwaycpu_core.dir/gx.cpp.i: cmake_force
@@ -285,7 +299,7 @@ CMakeFiles/broadwaycpu_core.dir/gx.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o: /home/levi/source/repos/BroadwayCPU/wii_boot.cpp
 CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.o -c /home/levi/source/repos/BroadwayCPU/wii_boot.cpp
 
 CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.i: cmake_force
@@ -299,7 +313,7 @@ CMakeFiles/broadwaycpu_core.dir/wii_boot.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o: /home/levi/source/repos/BroadwayCPU/wii_firmware.cpp
 CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o -c /home/levi/source/repos/BroadwayCPU/wii_firmware.cpp
 
 CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.i: cmake_force
@@ -313,7 +327,7 @@ CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.s: cmake_force
 CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o: CMakeFiles/broadwaycpu_core.dir/flags.make
 CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o: /home/levi/source/repos/BroadwayCPU/arm_elf.cpp
 CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o: CMakeFiles/broadwaycpu_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o"
 	/opt/devkitpro/msys2/usr/bin/c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o -MF CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o.d -o CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o -c /home/levi/source/repos/BroadwayCPU/arm_elf.cpp
 
 CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.i: cmake_force
@@ -331,6 +345,7 @@ broadwaycpu_core_OBJECTS = \
 "CMakeFiles/broadwaycpu_core.dir/decoder.cpp.o" \
 "CMakeFiles/broadwaycpu_core.dir/disc_image.cpp.o" \
 "CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.o" \
+"CMakeFiles/broadwaycpu_core.dir/exi.cpp.o" \
 "CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o" \
 "CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o" \
 "CMakeFiles/broadwaycpu_core.dir/integer.cpp.o" \
@@ -353,6 +368,7 @@ libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/cpu.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/decoder.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/disc_image.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.o
+libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/exi.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/integer.cpp.o
@@ -368,7 +384,7 @@ libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/wii_firmware.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/arm_elf.cpp.o
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/build.make
 libbroadwaycpu_core.a: CMakeFiles/broadwaycpu_core.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Linking CXX static library libbroadwaycpu_core.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Linking CXX static library libbroadwaycpu_core.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/broadwaycpu_core.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/broadwaycpu_core.dir/link.txt --verbose=$(VERBOSE)
 

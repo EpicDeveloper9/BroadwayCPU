@@ -24,6 +24,7 @@
 #include "executable_loader.hpp"
 #include "video_output.hpp"
 #include "gx.hpp"
+#include "exi.hpp"
 #include "wii_boot.hpp"
 #include "disc_image.hpp"
 #include "wii_firmware.hpp"
@@ -34,15 +35,18 @@
 namespace {
 constexpr wchar_t kClassName[] = L"BroadwayCPUWindow";
 constexpr UINT_PTR kRunTimer = 1;
+constexpr UINT_PTR kVideoDiagnosticTimer = 2;
 constexpr size_t kMemorySize = 32 * 1024 * 1024;
 constexpr uint32_t kRawLoadAddress = 0x80004000u;
 constexpr UINT kVideoOutputCommand = 201;
 constexpr UINT kOpenWiiIsoCommand = 110;
 constexpr UINT kStopCommand = 111;
 constexpr UINT kFirmwareCommand = 113;
+constexpr UINT kVideoDiagnosticCommand = 202;
 
 std::unique_ptr<Broadway::CPU> g_cpu;
 std::unique_ptr<Broadway::GXProcessor> g_gx;
+std::unique_ptr<Broadway::EXIController> g_exi;
 class MmioHub : public Broadway::MemoryMappedDevice {
 public:
     explicit MmioHub(Broadway::GXProcessor* gxDevice) : gx(gxDevice), storage(0x10000, 0) {}
@@ -79,6 +83,7 @@ private:
 };
 Broadway::VideoFrameMailbox g_videoFrames;
 std::unique_ptr<Broadway::VideoOutputWindow> g_videoOutput;
+HMENU g_viewMenu = nullptr;
 std::unique_ptr<Broadway::WiiBootSession> g_isoBoot;
 HINSTANCE g_instance = nullptr;
 HWND g_window = nullptr;
@@ -100,6 +105,8 @@ bool g_loaded = false;
 bool g_running = false;
 bool g_isoSelected = false;
 bool g_isoBooted = false;
+bool g_videoDiagnosticEnabled = false;
+uint64_t g_videoDiagnosticFrame = 0;
 std::array<uint8_t,16> g_commonKey{};
 bool g_haveCommonKey = false;
 int g_selectedTab = 0;
@@ -280,6 +287,7 @@ void LoadExecutable(HWND owner) {
             format = Broadway::ExecutableFormat::Elf;
         const auto loadResult = Broadway::ExecutableLoader::Load(*g_cpu, bytes, format, kRawLoadAddress);
         g_gx->Reset();
+        g_exi->Reset();
         g_entryPoint = loadResult.entryPoint;
         g_cpu->registers.PC = g_entryPoint; g_loaded = true; g_loadedPath = path;
         g_isoSelected = false; g_isoBooted = false; g_isoBoot.reset();
@@ -309,7 +317,7 @@ void ResetCPU() {
         BootWiiIso(false);
         return;
     }
-    g_cpu->Reset(); g_gx->Reset(); g_cpu->registers.PC = g_entryPoint;
+    g_cpu->Reset(); g_gx->Reset(); g_exi->Reset(); g_cpu->registers.PC = g_entryPoint;
     SetStatus(L"CPU reset to entry point 0x" + Hex(g_entryPoint)); Refresh();
 }
 void OpenVideoOutput() {
@@ -317,10 +325,45 @@ void OpenVideoOutput() {
         if (!g_videoOutput)
             g_videoOutput = std::make_unique<Broadway::VideoOutputWindow>(g_instance, g_videoFrames);
         g_videoOutput->Show();
+        g_videoOutput->SetDiagnosticMode(g_videoDiagnosticEnabled);
     } catch (const std::exception& e) {
         const std::wstring message = ToWide(e.what());
         MessageBoxW(g_window, message.c_str(), L"BroadwayCPU — Video Output", MB_ICONERROR | MB_OK);
     }
+}
+
+void ToggleVideoDiagnostic() {
+    if (!g_videoDiagnosticEnabled) {
+        OpenVideoOutput();
+        if (!g_videoOutput || !g_videoOutput->IsOpen()) return;
+        g_videoDiagnosticEnabled = true;
+        g_videoDiagnosticFrame = 0;
+        g_videoOutput->SetDiagnosticMode(true);
+        g_videoOutput->ClearFrame();
+        g_videoFrames.Publish(Broadway::CreateDiagnosticVideoFrame(640, 480, g_videoDiagnosticFrame++));
+        if (!SetTimer(g_window, kVideoDiagnosticTimer, 33, nullptr)) {
+            g_videoDiagnosticEnabled = false;
+            g_videoOutput->ClearFrame();
+            g_videoOutput->SetDiagnosticMode(false);
+            SetStatus(L"Could not start the video diagnostic update timer.");
+            return;
+        }
+        if (g_viewMenu)
+            CheckMenuItem(g_viewMenu, kVideoDiagnosticCommand, MF_BYCOMMAND | MF_CHECKED);
+        SetStatus(L"Video Output diagnostic pattern enabled - generated test pixels, not Wii output.");
+        return;
+    }
+
+    g_videoDiagnosticEnabled = false;
+    KillTimer(g_window, kVideoDiagnosticTimer);
+    g_videoFrames.Clear();
+    if (g_videoOutput) {
+        g_videoOutput->ClearFrame();
+        g_videoOutput->SetDiagnosticMode(false);
+    }
+    if (g_viewMenu)
+        CheckMenuItem(g_viewMenu, kVideoDiagnosticCommand, MF_BYCOMMAND | MF_UNCHECKED);
+    SetStatus(L"Video Output diagnostic pattern disabled; genuine GX frames may display when produced.");
 }
 void DrawTextLine(HDC dc, int x, int y, const std::wstring& s, COLORREF color, HFONT font) {
     SetTextColor(dc, color); SelectObject(dc, font); TextOutW(dc, x, y, s.c_str(), int(s.size()));
@@ -410,9 +453,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     case WM_COMMAND:
-        switch(LOWORD(wp)){case 100:LoadExecutable(hwnd);break;case kOpenWiiIsoCommand:OpenWiiIso(hwnd);break;case kFirmwareCommand:ConfigureWiiSystemData(hwnd);break;case 101:if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();break;case kStopCommand:StopRun();SetStatus(L"Stopped at 0x"+Hex(g_cpu->registers.PC));break;case 102:if(!g_running)ExecuteStep();break;case 103:ResetCPU();break;case 105:DestroyWindow(hwnd);break;case 200:g_selectedTab=1-g_selectedTab;Refresh();break;case kVideoOutputCommand:OpenVideoOutput();break;}
+        switch(LOWORD(wp)){case 100:LoadExecutable(hwnd);break;case kOpenWiiIsoCommand:OpenWiiIso(hwnd);break;case kFirmwareCommand:ConfigureWiiSystemData(hwnd);break;case 101:if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();break;case kStopCommand:StopRun();SetStatus(L"Stopped at 0x"+Hex(g_cpu->registers.PC));break;case 102:if(!g_running)ExecuteStep();break;case 103:ResetCPU();break;case 105:DestroyWindow(hwnd);break;case 200:g_selectedTab=1-g_selectedTab;Refresh();break;case kVideoOutputCommand:OpenVideoOutput();break;case kVideoDiagnosticCommand:ToggleVideoDiagnostic();break;}
         return 0;
     case WM_TIMER:
+        if(wp==kVideoDiagnosticTimer && g_videoDiagnosticEnabled) {
+            g_videoFrames.Publish(Broadway::CreateDiagnosticVideoFrame(640, 480, g_videoDiagnosticFrame++));
+            return 0;
+        }
         if(wp==kRunTimer && g_running) {
             try { g_cpu->Run(1000); if(g_cpu->halted){StopRun();SetStatus(L"CPU halted.");} else if(g_cpu->InstructionsExecuted()%10000<1000) SetStatus(L"Running — " + std::to_wstring(g_cpu->InstructionsExecuted()) + L" instructions"); }
             catch(const Broadway::CPUException& e){StopRun();g_lastError=ToWide(e.what());uint32_t raw=0;try{raw=g_cpu->memory.Read32(e.FaultPC());}catch(...){}SetStatus(L"CPU stopped at 0x"+Hex(e.FaultPC())+L" raw 0x"+Hex(raw)+L": "+g_lastError);}
@@ -422,7 +469,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     case WM_PAINT: PaintMain(hwnd); return 0;
     case WM_SIZE: InvalidateRect(hwnd,nullptr,TRUE); return 0;
-    case WM_DESTROY: StopRun(); g_videoOutput.reset(); if(g_cpu) g_cpu->memory.AttachMmioDevice(nullptr); g_gx.reset(); g_videoFrames.Clear(); PostQuitMessage(0); return 0;
+    case WM_DESTROY: StopRun(); KillTimer(hwnd,kVideoDiagnosticTimer); g_videoDiagnosticEnabled=false; g_videoOutput.reset(); if(g_cpu) g_cpu->memory.AttachMmioDevice(nullptr); g_exi.reset(); g_gx.reset(); g_videoFrames.Clear(); PostQuitMessage(0); return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -434,7 +481,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     try {
         g_cpu=std::make_unique<Broadway::CPU>(kMemorySize);
         g_gx=std::make_unique<Broadway::GXProcessor>(g_cpu->memory,g_videoFrames);
+        g_exi=std::make_unique<Broadway::EXIController>();
         g_cpu->memory.AttachMmioDevice(g_gx.get());
+        g_cpu->memory.AddMmioDevice(g_exi.get());
     }
     catch (...) { MessageBoxW(nullptr,L"Could not initialize the Broadway CPU.",L"BroadwayCPU",MB_ICONERROR); return 1; }
     WNDCLASSEXW wc{}; wc.cbSize=sizeof(wc); wc.style=CS_HREDRAW|CS_VREDRAW; wc.lpfnWndProc=WindowProc;
@@ -444,12 +493,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         CW_USEDEFAULT,CW_USEDEFAULT,1180,820,nullptr,nullptr,instance,nullptr);
     if(!hwnd) return 2;
     HMENU menu=CreateMenu(); HMENU file=CreatePopupMenu(); AppendMenuW(file,MF_STRING,kOpenWiiIsoCommand,L"Open Wii ISO...\tCtrl+Shift+O"); AppendMenuW(file,MF_STRING,100,L"Load executable...\tCtrl+O"); AppendMenuW(file,MF_SEPARATOR,0,nullptr); AppendMenuW(file,MF_STRING,105,L"Exit"); AppendMenuW(menu,MF_POPUP,(UINT_PTR)file,L"File");
-    HMENU view=CreatePopupMenu(); AppendMenuW(view,MF_STRING,200,L"Toggle GPR / FPR view"); AppendMenuW(view,MF_SEPARATOR,0,nullptr); AppendMenuW(view,MF_STRING,kVideoOutputCommand,L"Video Output\tCtrl+Shift+V"); AppendMenuW(menu,MF_POPUP,(UINT_PTR)view,L"View");
+    g_viewMenu=CreatePopupMenu(); AppendMenuW(g_viewMenu,MF_STRING,200,L"Toggle GPR / FPR view"); AppendMenuW(g_viewMenu,MF_SEPARATOR,0,nullptr); AppendMenuW(g_viewMenu,MF_STRING,kVideoOutputCommand,L"Video Output\tCtrl+Shift+V"); AppendMenuW(g_viewMenu,MF_STRING,kVideoDiagnosticCommand,L"Enable video output diagnostic pattern\tCtrl+Shift+D"); AppendMenuW(menu,MF_POPUP,(UINT_PTR)g_viewMenu,L"View");
     HMENU emu=CreatePopupMenu(); AppendMenuW(emu,MF_STRING,101,L"Start / Pause\tF5"); AppendMenuW(emu,MF_STRING,kStopCommand,L"Stop"); AppendMenuW(emu,MF_STRING,102,L"Single step\tF10"); AppendMenuW(emu,MF_STRING,103,L"Reset\tCtrl+R"); AppendMenuW(menu,MF_POPUP,(UINT_PTR)emu,L"CPU");
     HMENU tools=CreatePopupMenu(); AppendMenuW(tools,MF_STRING,kFirmwareCommand,L"Configure Wii system data..."); AppendMenuW(menu,MF_POPUP,(UINT_PTR)tools,L"Tools"); SetMenu(hwnd,menu);
     ShowWindow(hwnd,show); UpdateWindow(hwnd);
     MSG msg{}; while(GetMessageW(&msg,nullptr,0,0)>0){
-        if(msg.message==WM_KEYDOWN){if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='V')OpenVideoOutput();else if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='O')OpenWiiIso(hwnd);else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='O')LoadExecutable(hwnd);else if(msg.wParam==VK_F5){if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();}else if(msg.wParam==VK_F10&&!g_running)ExecuteStep();else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='R')ResetCPU();}
+        if(msg.message==WM_KEYDOWN){if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='V')OpenVideoOutput();else if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='D')ToggleVideoDiagnostic();else if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='O')OpenWiiIso(hwnd);else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='O')LoadExecutable(hwnd);else if(msg.wParam==VK_F5){if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();}else if(msg.wParam==VK_F10&&!g_running)ExecuteStep();else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='R')ResetCPU();}
         TranslateMessage(&msg); DispatchMessageW(&msg);
     }
     g_videoOutput.reset();

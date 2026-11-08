@@ -5,4 +5,4 @@
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
 add_test([=[broadwaycpu_core_tests]=] "/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/broadwaycpu_tests.exe")
-set_tests_properties([=[broadwaycpu_core_tests]=] PROPERTIES  _BACKTRACE_TRIPLES "/home/levi/source/repos/BroadwayCPU/CMakeLists.txt;57;add_test;/home/levi/source/repos/BroadwayCPU/CMakeLists.txt;0;")
+set_tests_properties([=[broadwaycpu_core_tests]=] PROPERTIES  _BACKTRACE_TRIPLES "/home/levi/source/repos/BroadwayCPU/CMakeLists.txt;58;add_test;/home/levi/source/repos/BroadwayCPU/CMakeLists.txt;0;")

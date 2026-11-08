@@ -19,6 +19,8 @@ public:
 
     void Show();
     void ToggleFullscreen();
+    void SetDiagnosticMode(bool enabled);
+    void ClearFrame();
     bool IsOpen() const noexcept { return window != nullptr; }
     static LRESULT CALLBACK StaticWindowProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -26,6 +28,7 @@ private:
     struct NotifyState;
     LRESULT WindowProc(HWND, UINT, WPARAM, LPARAM);
     bool CreateDeviceResources();
+    bool UploadCurrentFrame();
     void DestroyDeviceResources();
     void AcceptLatestFrame();
     void Draw(HWND);

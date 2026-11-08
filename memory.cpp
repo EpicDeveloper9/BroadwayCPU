@@ -48,20 +48,23 @@ uint32_t Memory::NormalizeMmio(uint32_t address, size_t bytes) const {
     return 0xFFFFFFFFu;
 }
 uint8_t Memory::Read8(uint32_t a) const {
-    if (mmioDevice && mmioDevice->Handles(a,1)) return uint8_t(mmioDevice->Read(a,1));
+    for (auto* device : mmioDevices)
+        if (device->Handles(a, 1)) return uint8_t(device->Read(a, 1));
     const uint32_t offset = NormalizeMmio(a,1);
     if (offset != 0xFFFFFFFFu) return mmioStorage[offset];
     CheckBounds(a,1); a = static_cast<uint32_t>(TranslateAddress(a)); return data[a];
 }
 uint16_t Memory::Read16(uint32_t a) const {
-    if (mmioDevice && mmioDevice->Handles(a,2)) return uint16_t(mmioDevice->Read(a,2));
+    for (auto* device : mmioDevices)
+        if (device->Handles(a, 2)) return uint16_t(device->Read(a, 2));
     const uint32_t offset = NormalizeMmio(a,2);
     if (offset != 0xFFFFFFFFu) return uint16_t((mmioStorage[offset] << 8) | mmioStorage[offset + 1]);
     CheckBounds(a,2); a = static_cast<uint32_t>(TranslateAddress(a));
     return (uint16_t(data[a]) << 8) | uint16_t(data[a+1]);
 }
 uint32_t Memory::Read32(uint32_t a) const {
-    if (mmioDevice && mmioDevice->Handles(a,4)) return mmioDevice->Read(a,4);
+    for (auto* device : mmioDevices)
+        if (device->Handles(a, 4)) return device->Read(a, 4);
     const uint32_t offset = NormalizeMmio(a,4);
     if (offset != 0xFFFFFFFFu) return (uint32_t(mmioStorage[offset]) << 24) | (uint32_t(mmioStorage[offset + 1]) << 16) |
            (uint32_t(mmioStorage[offset + 2]) << 8) | uint32_t(mmioStorage[offset + 3]);
@@ -70,24 +73,31 @@ uint32_t Memory::Read32(uint32_t a) const {
            (uint32_t(data[a+2])<<8) | uint32_t(data[a+3]);
 }
 uint64_t Memory::Read64(uint32_t a) const {
-    if (mmioDevice && mmioDevice->Handles(a,8)) throw std::out_of_range("64-bit MMIO access is not supported by this device");
+    for (auto* device : mmioDevices)
+        if (device->Handles(a, 8)) throw std::out_of_range("64-bit MMIO access is not supported by this device");
     CheckBounds(a,8);
     return (uint64_t(Read32(a)) << 32) | Read32(a+4);
 }
 void Memory::Write8(uint32_t a,uint8_t v) {
-    if (mmioDevice && mmioDevice->Handles(a,1)) { mmioDevice->Write(a,1,v); return; }
+    for (auto* device : mmioDevices) {
+        if (device->Handles(a, 1)) { device->Write(a, 1, v); return; }
+    }
     const uint32_t offset = NormalizeMmio(a,1);
     if (offset != 0xFFFFFFFFu) { mmioStorage[offset] = v; return; }
     CheckBounds(a,1); a = static_cast<uint32_t>(TranslateAddress(a)); data[a]=v;
 }
 void Memory::Write16(uint32_t a,uint16_t v) {
-    if (mmioDevice && mmioDevice->Handles(a,2)) { mmioDevice->Write(a,2,v); return; }
+    for (auto* device : mmioDevices) {
+        if (device->Handles(a, 2)) { device->Write(a, 2, v); return; }
+    }
     const uint32_t offset = NormalizeMmio(a,2);
     if (offset != 0xFFFFFFFFu) { mmioStorage[offset] = uint8_t(v >> 8); mmioStorage[offset + 1] = uint8_t(v); return; }
     CheckBounds(a,2); a = static_cast<uint32_t>(TranslateAddress(a)); data[a]=uint8_t(v>>8); data[a+1]=uint8_t(v);
 }
 void Memory::Write32(uint32_t a,uint32_t v) {
-    if (mmioDevice && mmioDevice->Handles(a,4)) { mmioDevice->Write(a,4,v); return; }
+    for (auto* device : mmioDevices) {
+        if (device->Handles(a, 4)) { device->Write(a, 4, v); return; }
+    }
     const uint32_t offset = NormalizeMmio(a,4);
     if (offset != 0xFFFFFFFFu) {
         mmioStorage[offset] = uint8_t(v >> 24);
@@ -100,12 +110,25 @@ void Memory::Write32(uint32_t a,uint32_t v) {
     data[a+2]=uint8_t(v>>8); data[a+3]=uint8_t(v);
 }
 void Memory::Write64(uint32_t a,uint64_t v) {
-    if (mmioDevice && mmioDevice->Handles(a,8)) throw std::out_of_range("64-bit MMIO access is not supported by this device");
+    for (auto* device : mmioDevices)
+        if (device->Handles(a, 8))
+            throw std::out_of_range("64-bit MMIO access is not supported by this device");
     CheckBounds(a,8); Write32(a,uint32_t(v>>32)); Write32(a+4,uint32_t(v));
 }
 void Memory::Clear() {
     std::fill(data.begin(), data.end(), uint8_t{0});
     std::fill(mmioStorage.begin(), mmioStorage.end(), uint8_t{0});
+    for (auto* device : mmioDevices) device->Reset();
+}
+void Memory::AttachMmioDevice(MemoryMappedDevice* device) {
+    mmioDevices.clear();
+    if (device) mmioDevices.push_back(device);
+}
+void Memory::AddMmioDevice(MemoryMappedDevice* device) {
+    if (!device) throw std::invalid_argument("Cannot attach a null MMIO device");
+    for (const auto* existing : mmioDevices)
+        if (existing == device) return;
+    mmioDevices.push_back(device);
 }
 size_t Memory::Size() const { return data.size(); }
 }

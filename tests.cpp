@@ -2,6 +2,7 @@
 #include "executable_loader.hpp"
 #include "video_frame.hpp"
 #include "gx.hpp"
+#include "exi.hpp"
 #include "disc_image.hpp"
 #include "wii_boot.hpp"
 #include "wii_firmware.hpp"
@@ -19,6 +20,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -165,8 +167,8 @@ void TestMemoryAndInteger() {
     cpu.memory.Write8(0xCC00680Fu, 0x03u);
     Equal(cpu.memory.Read32(0x0C00680Cu), 0x00000003u,
           "EXI control register byte writes update the aliased register state");
-    cpu.memory.Write32(0xCD00680Cu, 0x0000000Fu);
-    Equal(cpu.memory.Read32(0x0D00680Cu), 0x0000000Fu,
+    cpu.memory.Write32(0xCD00680Cu, 0x00000015u);
+    Equal(cpu.memory.Read32(0x0D00680Cu), 0x00000015u,
           "0xCD and 0x0D MMIO aliases share their own address bank");
     Equal(cpu.memory.Read32(0xCC00680Cu), 0x00000003u,
           "distinct 0x0C and 0x0D MMIO banks do not alias each other");
@@ -179,6 +181,51 @@ void TestMemoryAndInteger() {
           "Memory reset clears EXI control register state");
     Equal(cpu.memory.Read32(0x0D00680Cu), 0,
           "Memory reset clears the separate D-bank register state");
+}
+
+void TestEXIControllerRegisters() {
+    Broadway::Memory memory(4096);
+    Broadway::EXIController exi;
+    memory.AttachMmioDevice(&exi);
+
+    Check(!exi.Handles(0xCD00683Cu, 4),
+          "EXI does not claim the unmapped tail of its address window");
+    Equal(memory.Read32(0xCD00680Cu), 0,
+          "EXI channel 0 control register resets with TSTART clear");
+    memory.Write32(0xCD006800u, 0x000001A0u);
+    Equal(memory.Read32(0x0D006800u), 0x000001A0u,
+          "EXI status is visible through the physical alias");
+    Equal(memory.Read32(0xCD00680Cu), 0,
+          "EXI channel control and status registers are distinct");
+
+    memory.Write32(0xCD00680Cu, 0x00000015u);
+    Equal(memory.Read32(0x0D00680Cu), 0x00000015u,
+          "An EXI transfer request remains pending without a modeled selected device");
+    Equal(exi.TransferStartRequests(), 1u, "EXI counts an explicit TSTART write");
+    Equal(exi.TransfersCompleted(), 0u,
+          "EXI does not fabricate completion for an unmodeled device transfer");
+    Equal(exi.MmioReads(), 4u, "EXI counts reads from its register block");
+    Equal(exi.MmioWrites(), 2u, "EXI counts writes to its register block");
+
+    Equal(memory.Read16(0xCD00680Eu), 0x0015u,
+          "EXI control halfword read preserves big-endian register lanes");
+    Equal(memory.Read8(0x0D00680Fu), 0x15u,
+          "EXI control byte read selects the least-significant lane");
+    memory.Write8(0xCD00680Fu, 0x02u);
+    Equal(memory.Read32(0xCD00680Cu), 0x00000002u,
+          "EXI control byte write updates only the addressed lane");
+
+    memory.Write32(0xCC00680Cu, 0x00000003u);
+    Equal(memory.Read32(0xCC00680Cu), 0x00000003u,
+          "GameCube-compatible C-bank storage remains separate from Wii D-bank EXI");
+    Equal(memory.Read32(0xCD00680Cu), 0x00000002u,
+          "C-bank writes do not alter the Wii D-bank EXI control register");
+
+    memory.Clear();
+    Equal(exi.MmioReads(), 0u, "EXI reset clears access counters");
+    Equal(exi.TransferStartRequests(), 0u, "EXI reset clears transfer-start accounting");
+    Equal(memory.Read32(0xCD00680Cu), 0,
+          "Memory reset resets attached EXI controller registers");
 }
 
 void TestMSRInstructions() {
@@ -825,6 +872,28 @@ void TestDecoder() {
 }
 
 void TestVideoFrames() {
+    const auto diagnostic0 = Broadway::CreateDiagnosticVideoFrame(640, 480, 0);
+    const auto diagnostic1 = Broadway::CreateDiagnosticVideoFrame(640, 480, 1);
+    Check(diagnostic0.Width() == 640 && diagnostic0.Height() == 480 &&
+          diagnostic0.Format() == Broadway::VideoPixelFormat::BGRA8,
+          "Diagnostic video producer creates a presentation-ready BGRA frame");
+    const size_t redBar = (size_t(40) * diagnostic0.RowPitch()) + size_t(500) * 4;
+    Check(diagnostic0.Data()[redBar] == 0 && diagnostic0.Data()[redBar + 1] == 0 &&
+          diagnostic0.Data()[redBar + 2] == 255,
+          "Diagnostic video contains distinct saturated color bars");
+    const size_t gradientLeft = size_t(300) * diagnostic0.RowPitch() + size_t(10) * 4;
+    const size_t gradientRight = size_t(300) * diagnostic0.RowPitch() + size_t(600) * 4;
+    Check(diagnostic0.Data()[gradientLeft] != diagnostic0.Data()[gradientRight],
+          "Diagnostic video contains a horizontal color gradient");
+    const size_t markerLeft = size_t(350) * diagnostic0.RowPitch() + size_t(2) * 4;
+    const size_t markerRight = size_t(350) * diagnostic0.RowPitch() + size_t(28) * 4;
+    Check(diagnostic0.Data()[markerLeft] == 255 && diagnostic1.Data()[markerLeft] != 255 &&
+          diagnostic0.Data()[markerRight] != 255 && diagnostic1.Data()[markerRight] == 255,
+          "Diagnostic video moving marker advances between generated frames");
+    const auto convertedDiagnostic = Broadway::ConvertToBGRA8(diagnostic0);
+    Check(convertedDiagnostic.bytes[redBar + 2] == 255,
+          "Diagnostic color pattern survives the existing video conversion path");
+
     bool badDimensions = false;
     try { (void)Broadway::VideoFrame::Create(0, 1, Broadway::VideoPixelFormat::BGRA8, 0, {}); }
     catch (const std::invalid_argument&) { badDimensions = true; }
@@ -1236,10 +1305,14 @@ void TestHomebrewDol() {
     Broadway::CPU cpu(32u * 1024u * 1024u);
     Broadway::VideoFrameMailbox mailbox;
     Broadway::GXProcessor gx(cpu.memory, mailbox);
+    Broadway::EXIController exi;
     cpu.memory.AttachMmioDevice(&gx);
+    cpu.memory.AddMmioDevice(&exi);
     const auto result = Broadway::ExecutableLoader::Load(cpu, bytes, Broadway::ExecutableFormat::Dol);
     cpu.memory.Write32(0xcc005004, 0x8000);
     std::cout << "DOL entry: 0x" << std::hex << result.entryPoint << " segments=" << std::dec << result.segmentCount << "\n";
+    std::cout << "EXI initial CSR=0x" << std::hex << exi.Status(0)
+              << " CR=0x" << exi.Control(0) << std::dec << "\n";
     try {
         for (int i = 0; i < 2000; ++i) {
             cpu.Run(100000);
@@ -1260,7 +1333,8 @@ void TestHomebrewDol() {
         try { raw = cpu.memory.Read32(cpu.registers.PC); } catch (...) {}
         std::cout << "  raw at PC: 0x" << std::hex << raw << " decoded=" << Broadway::Decoder::Name(Broadway::Decoder::Decode(raw)) << "\n";
     }
-    std::cout << "final PC=" << std::hex << cpu.registers.PC << " r2=" << cpu.registers.GPR[2]
+    std::cout << "final instructions=" << std::dec << cpu.InstructionsExecuted()
+              << " PC=" << std::hex << cpu.registers.PC << " r2=" << cpu.registers.GPR[2]
               << " r3=" << cpu.registers.GPR[3] << " r4=" << cpu.registers.GPR[4]
               << " r6=" << cpu.registers.GPR[6] << " r9=" << cpu.registers.GPR[9]
               << " r10=" << cpu.registers.GPR[10] << " r11=" << cpu.registers.GPR[11]
@@ -1276,7 +1350,26 @@ void TestHomebrewDol() {
     }
     std::cout << "gx_commands=" << gx.CommandsProcessed()
               << " gx_frames=" << gx.FramesCopied() << " stalled=" << gx.IsStalled() << "\n";
+    const bool waitingInExi = cpu.registers.PC >= 0x80027dc0u && cpu.registers.PC <= 0x80027dc8u;
+    std::cout << "exi_wait_completed_naturally=" << (waitingInExi ? "no" : "yes") << "\n";
     if (gx.IsStalled()) std::cout << "GX error: " << gx.LastError() << "\n";
+    std::cout << "EXI reads=" << std::dec << exi.MmioReads() << " writes=" << exi.MmioWrites()
+              << " start_requests=" << exi.TransferStartRequests() << " completed=" << exi.TransfersCompleted()
+              << " | ch0_csr=0x" << std::hex << exi.Status(0)
+              << " ch0_cr=0x" << exi.Control(0) << " ch0_mar=0x" << exi.DmaAddress(0)
+              << " ch0_len=0x" << exi.DmaLength(0)
+              << " ch0_data=0x" << exi.ImmediateData(0) << "\n";
+    for (const auto& range : {std::pair{0x80027db4u, 0x80027e18u},
+                              std::pair{0x80027e80u, 0x80027fc0u},
+                              std::pair{0x80028590u, 0x800285dcu}}) {
+        std::cout << "EXI disassembly " << std::hex << range.first << "-";
+        for (uint32_t address = range.first; address <= range.second; address += 4) {
+            const uint32_t raw = cpu.memory.Read32(address);
+            std::cout << "\n  " << std::hex << address << "  0x" << raw << "  "
+                      << Broadway::Decoder::Format(Broadway::Decoder::Decode(raw), address);
+        }
+        std::cout << "\n";
+    }
 }
 void TestStarletArmCore() {
     std::vector<uint8_t> elf(52 + 32 + 4, 0);
@@ -1375,6 +1468,7 @@ void TestStarletArmElfLoading() {
 int main() {
     try {
         TestMemoryAndInteger();
+        TestEXIControllerRegisters();
         TestMSRInstructions();
         TestSegmentRegisterInstructions();
         TestTimeBaseInstructions();

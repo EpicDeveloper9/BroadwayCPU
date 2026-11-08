@@ -7,6 +7,7 @@ CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.o
  /home/levi/source/repos/BroadwayCPU/decoder.hpp
  /home/levi/source/repos/BroadwayCPU/exceptions.hpp
  /home/levi/source/repos/BroadwayCPU/executable_loader.hpp
+ /home/levi/source/repos/BroadwayCPU/exi.hpp
  /home/levi/source/repos/BroadwayCPU/gx.hpp
  /home/levi/source/repos/BroadwayCPU/hardware_interface.hpp
  /home/levi/source/repos/BroadwayCPU/instruction.hpp

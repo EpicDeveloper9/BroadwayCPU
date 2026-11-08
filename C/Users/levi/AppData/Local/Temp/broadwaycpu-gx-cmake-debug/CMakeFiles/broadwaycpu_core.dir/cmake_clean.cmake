@@ -13,6 +13,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/broadwaycpu_core.dir/exceptions.cpp.o.d"
   "CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o"
   "CMakeFiles/broadwaycpu_core.dir/executable_loader.cpp.o.d"
+  "CMakeFiles/broadwaycpu_core.dir/exi.cpp.o"
+  "CMakeFiles/broadwaycpu_core.dir/exi.cpp.o.d"
   "CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o"
   "CMakeFiles/broadwaycpu_core.dir/floating_point.cpp.o.d"
   "CMakeFiles/broadwaycpu_core.dir/gx.cpp.o"

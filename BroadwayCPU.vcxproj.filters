@@ -39,6 +39,9 @@
     <ClInclude Include="exceptions.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="exi.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="video_frame.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="exceptions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="exi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="executable_loader.cpp">

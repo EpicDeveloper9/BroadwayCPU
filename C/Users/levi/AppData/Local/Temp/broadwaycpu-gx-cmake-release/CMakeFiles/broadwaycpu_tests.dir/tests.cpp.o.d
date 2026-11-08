@@ -193,6 +193,7 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/parse_numbers.h \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/unique_lock.h \
  /home/levi/source/repos/BroadwayCPU/gx.hpp \
+ /home/levi/source/repos/BroadwayCPU/exi.hpp \
  /home/levi/source/repos/BroadwayCPU/disc_image.hpp \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/filesystem \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/fs_fwd.h \
@@ -251,4 +252,6 @@ CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o: \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/limits.h \
  /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/syslimits.h \
  /usr/include/limits.h /usr/include/features.h \
- /usr/include/cygwin/limits.h /usr/include/semaphore.h
+ /usr/include/cygwin/limits.h /usr/include/semaphore.h \
+ /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/utility \
+ /opt/devkitpro/msys2/usr/lib/gcc/x86_64-pc-cygwin/15.2.0/include/c++/bits/stl_relops.h

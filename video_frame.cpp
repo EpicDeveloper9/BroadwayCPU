@@ -1,6 +1,7 @@
 #include "video_frame.hpp"
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -94,6 +95,57 @@ BGRAFrame ConvertToBGRA8(const VideoFrame& frame) {
         }
     }
     return output;
+}
+
+VideoFrame CreateDiagnosticVideoFrame(uint32_t width, uint32_t height, uint64_t frameNumber) {
+    if (width < 16 || height < 16)
+        throw std::invalid_argument("Diagnostic video frame dimensions are too small.");
+    if (size_t(width) > std::numeric_limits<size_t>::max() / 4 ||
+        size_t(height) > std::numeric_limits<size_t>::max() / (size_t(width) * 4))
+        throw std::length_error("Diagnostic video frame is too large.");
+    const size_t pitch = size_t(width) * 4;
+    std::vector<uint8_t> pixels(pitch * height, 0);
+    constexpr std::array<std::array<uint8_t, 3>, 8> bars{{
+        {{255, 255, 255}}, {{0, 255, 255}}, {{255, 255, 0}}, {{0, 255, 0}},
+        {{255, 0, 255}}, {{0, 0, 255}}, {{255, 0, 0}}, {{0, 0, 0}}
+    }};
+    const uint32_t barsHeight = height / 2;
+    for (uint32_t y = 0; y < height; ++y) {
+        uint8_t* row = pixels.data() + size_t(y) * pitch;
+        for (uint32_t x = 0; x < width; ++x) {
+            uint8_t* pixel = row + size_t(x) * 4;
+            if (y < barsHeight) {
+                const auto& color = bars[std::min<size_t>(7, size_t(x) * bars.size() / width)];
+                pixel[0] = color[2];
+                pixel[1] = color[1];
+                pixel[2] = color[0];
+            } else {
+                const uint32_t gradientY = y - barsHeight;
+                pixel[0] = uint8_t((uint64_t(x) * 255) / (width - 1));
+                pixel[1] = uint8_t((uint64_t(gradientY) * 255) /
+                                   std::max(1u, height - barsHeight - 1));
+                pixel[2] = uint8_t((uint64_t(x + gradientY + frameNumber * 3) * 255) /
+                                   (width + height));
+            }
+            pixel[3] = 255;
+        }
+    }
+
+    const uint32_t square = std::max(4u, std::min(width, height - barsHeight) / 10);
+    const uint32_t travel = width - square;
+    const uint32_t x0 = uint32_t((frameNumber * 7) % (uint64_t(travel) * 2));
+    const uint32_t movingX = x0 <= travel ? x0 : uint32_t(uint64_t(travel) * 2 - x0);
+    const uint32_t movingY = barsHeight + (height - barsHeight - square) / 2;
+    for (uint32_t y = movingY; y < movingY + square; ++y) {
+        for (uint32_t x = movingX; x < movingX + square; ++x) {
+            uint8_t* pixel = pixels.data() + size_t(y) * pitch + size_t(x) * 4;
+            pixel[0] = 255;
+            pixel[1] = 255;
+            pixel[2] = 255;
+            pixel[3] = 255;
+        }
+    }
+    return VideoFrame::Create(width, height, VideoPixelFormat::BGRA8, pitch, std::move(pixels));
 }
 
 void VideoFrameMailbox::Publish(VideoFrame frame) {
