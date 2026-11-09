@@ -168,4 +168,54 @@ WiiFirmwareInventory WiiFirmwareInspector::InspectNand(const std::filesystem::pa
     return result;
 }
 
+WiiSystemEnvironment WiiFirmwareInspector::InspectEnvironment(const std::filesystem::path& root) {
+    WiiSystemEnvironment env;
+    env.nandRoot = root;
+    const auto inventory = InspectNand(root);
+    env.systemMenuTitleId = 0x0000000100000002ull;
+    env.requiredIosTitleId = inventory.requiredIosTitleId;
+    env.hasSystemMenuTmd = inventory.systemMenuTmdPresent;
+    env.hasSystemMenuBootContent = inventory.systemMenuBootContentPresent;
+    env.hasSystemMenuTicket = inventory.systemMenuTicketPresent;
+    env.hasIosTmd = inventory.iosTmdPresent;
+    env.hasIosBootContent = inventory.iosBootContentPresent;
+    env.hasIosTicket = inventory.iosTicketPresent;
+    env.hasAllRequiredFiles = inventory.requiredFilesPresent;
+    env.iosContentFilesPresent = inventory.iosContentFilesPresent;
+    env.iosContentFilesTotal = inventory.iosContentFilesTotal;
+
+    // Genuine Wii firmware data can exist in the extracted NAND tree without a full
+    // boot2/IOS runtime being implemented. This classification reflects the real title
+    // inventory that is available to the emulator and the remaining boot runtime gap.
+    if (std::filesystem::exists(root / "boot2") || std::filesystem::exists(root / "boot2" / "boot2.bin"))
+        env.hasBoot2 = true;
+    if (!env.hasSystemMenuTmd) {
+        env.bootStage = WiiBootStage::SystemMenuMissing;
+        env.status = "System Menu metadata is not present in the extracted NAND tree.";
+        return env;
+    }
+    if (!env.hasIosTmd) {
+        env.bootStage = WiiBootStage::IosMetadataMissing;
+        env.status = "The required IOS title is not present in the extracted NAND tree.";
+        return env;
+    }
+    if (!env.hasBoot2) {
+        env.bootStage = WiiBootStage::Boot2Missing;
+        env.status = "Extracted NAND contains the System Menu and IOS files, but boot2 is not present or not represented in this inventory.";
+        return env;
+    }
+    if (env.hasAllRequiredFiles) {
+        env.bootStage = WiiBootStage::BootFilesAvailable;
+        env.status = "Boot2 and the required Wii title metadata are available; actual boot runtime remains pending implementation.";
+        return env;
+    }
+    env.bootStage = WiiBootStage::RuntimePending;
+    env.status = inventory.status;
+    return env;
+}
+
+WiiSystemEnvironment WiiSystemEnvironment::Inspect(const std::filesystem::path& root) {
+    return WiiFirmwareInspector::InspectEnvironment(root);
+}
+
 } // namespace Broadway

@@ -62,4 +62,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/wii_firmware_probe.dir/DependInfo.cmake"
   "CMakeFiles/starlet_trace.dir/DependInfo.cmake"
   "CMakeFiles/gh3_dol_scan.dir/DependInfo.cmake"
+  "CMakeFiles/homebrew_gx_probe.dir/DependInfo.cmake"
   )

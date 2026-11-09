@@ -46,6 +46,7 @@ private:
     void ExecuteSystem(const Instruction&);
     void ExecuteFloatingPoint(const Instruction&);
     void ExecutePairedSingle(const Instruction&);
+    void EnterException(uint32_t vector, uint32_t savedPC);
     void UpdateCR0(uint32_t result);
     void SetCRField(unsigned field, uint32_t result);
     void UpdateCR1();

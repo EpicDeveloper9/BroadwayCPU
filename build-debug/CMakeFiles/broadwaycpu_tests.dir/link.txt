@@ -1,0 +1,1 @@
+/opt/devkitpro/msys2/usr/bin/g++.exe CMakeFiles/broadwaycpu_tests.dir/tests.cpp.o -o broadwaycpu_tests.exe -Wl,--out-implib,libbroadwaycpu_tests.dll.a -Wl,--major-image-version,0,--minor-image-version,0  libbroadwaycpu_core.a

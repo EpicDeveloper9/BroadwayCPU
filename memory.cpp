@@ -110,9 +110,20 @@ void Memory::Write32(uint32_t a,uint32_t v) {
     data[a+2]=uint8_t(v>>8); data[a+3]=uint8_t(v);
 }
 void Memory::Write64(uint32_t a,uint64_t v) {
-    for (auto* device : mmioDevices)
+    for (auto* device : mmioDevices) {
+        if (device->Handles(a, 4) && device->Handles(a + 4, 4)) {
+            Write32(a, uint32_t(v >> 32));
+            Write32(a + 4, uint32_t(v));
+            return;
+        }
         if (device->Handles(a, 8))
             throw std::out_of_range("64-bit MMIO access is not supported by this device");
+    }
+    if (NormalizeMmio(a, 8) != 0xFFFFFFFFu) {
+        Write32(a, uint32_t(v >> 32));
+        Write32(a + 4, uint32_t(v));
+        return;
+    }
     CheckBounds(a,8); Write32(a,uint32_t(v>>32)); Write32(a+4,uint32_t(v));
 }
 void Memory::Clear() {

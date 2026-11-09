@@ -28,8 +28,9 @@ Important incomplete architectural behavior:
 - BAT values are stored but are not used for effective-to-physical address
   translation. Page-table/TLB translation, protection, and MMU exceptions are
   not implemented.
-- Exception conditions are reported to the host as CPUException objects;
-  architectural exception entry, vectoring, SRR capture, DAR/DSISR updates,
+- System calls and floating-point-unavailable exceptions enter their
+  architectural vectors with SRR capture. Other exception conditions are
+  generally reported to the host as CPUException objects; DAR/DSISR updates,
   priority and interrupt delivery remain incomplete.
 - Cache operations, reservation/coherency behavior, and bus-visible ordering
   are not modeled. The flat memory array is not a hardware memory subsystem.

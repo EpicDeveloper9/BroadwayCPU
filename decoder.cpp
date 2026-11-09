@@ -103,6 +103,7 @@ const char* PrimaryName(const Instruction& i) {
         if (xo == 289) return "creqv";
         if (xo == 417) return "crorc";
         if (xo == 449) return "cror";
+        if (xo == 983) return "stfiwx";
         if (xo == 0) return "cmpw";
         if (xo == 32) return "cmplw";
         return nullptr;
@@ -244,7 +245,7 @@ bool IsImplemented(const Instruction& i) {
         case 33: case 129: case 193: case 225: case 257: case 289: case 417: case 449:
         case 54: case 86: case 246: case 278: case 470: case 982: case 1014:
         case 210: case 242: case 371: case 534: case 535: case 567: case 595: case 599: case 631: case 659: case 662: case 663:
-        case 695: case 727: case 759: case 790: case 918:
+        case 695: case 727: case 759: case 790: case 918: case 983:
             return true;
         default: return false;
         }
@@ -303,7 +304,7 @@ Instruction Decoder::Decode(uint32_t raw) {
         if (xo == 535 || xo == 567 || xo == 599 || xo == 631 ||
             xo == 663 || xo == 695 || xo == 727 || xo == 759)
             i.type = InstructionType::FloatingPoint;
-        if (xo == 534 || xo == 662 || xo == 790 || xo == 918)
+        if (xo == 534 || xo == 662 || xo == 790 || xo == 918 || xo == 983)
             i.type = InstructionType::LoadStore;
     }
 

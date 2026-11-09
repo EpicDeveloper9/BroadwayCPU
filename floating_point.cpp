@@ -58,7 +58,7 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
         const bool store=(op>=52);
         const bool update=(op&1u)!=0;
         if(update && fra==0) throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Floating-point update form requires nonzero RA");
-        const uint32_t alignment=single?4u:8u;
+        const uint32_t alignment=4u;
         if((ea&(alignment-1u))!=0) throw CPUException(ExceptionKind::Alignment,lastInstructionPC,"Unaligned floating-point memory access");
         try {
             if(store) {
@@ -88,7 +88,7 @@ void CPU::ExecuteFloatingPoint(const Instruction& ins) {
             if (update && fra == 0)
                 throw CPUException(ExceptionKind::InvalidInstruction,lastInstructionPC,"Indexed floating-point update form requires nonzero RA");
             const uint32_t ea = (fra ? registers.GPR[fra] : 0u) + registers.GPR[frb];
-            const unsigned alignment = single ? 4u : 8u;
+            const unsigned alignment = 4u;
             if ((ea & (alignment - 1u)) != 0)
                 throw CPUException(ExceptionKind::Alignment,lastInstructionPC,"Unaligned indexed floating-point memory access");
             try {

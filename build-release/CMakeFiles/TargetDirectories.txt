@@ -1,0 +1,11 @@
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/broadwaycpu_core.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/broadwaycpu_tests.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/gh3_startup_probe.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/gh3_iso_probe.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/wii_firmware_probe.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/starlet_trace.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/gh3_dol_scan.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/homebrew_gx_probe.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/test.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/edit_cache.dir
+/home/levi/source/repos/BroadwayCPU/build-release/CMakeFiles/rebuild_cache.dir

@@ -35,6 +35,7 @@
     <ClInclude Include="wii_boot.hpp" />
     <ClInclude Include="wii_firmware.hpp" />
     <ClInclude Include="arm_elf.hpp" />
+    <ClInclude Include="starlet_hardware.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="branches.cpp" />
@@ -58,6 +59,7 @@
     <ClCompile Include="wii_boot.cpp" />
     <ClCompile Include="wii_firmware.cpp" />
     <ClCompile Include="arm_elf.cpp" />
+    <ClCompile Include="starlet_hardware.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

@@ -70,6 +70,7 @@ all: CMakeFiles/gh3_iso_probe.dir/all
 all: CMakeFiles/wii_firmware_probe.dir/all
 all: CMakeFiles/starlet_trace.dir/all
 all: CMakeFiles/gh3_dol_scan.dir/all
+all: CMakeFiles/homebrew_gx_probe.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
@@ -80,6 +81,7 @@ codegen: CMakeFiles/gh3_iso_probe.dir/codegen
 codegen: CMakeFiles/wii_firmware_probe.dir/codegen
 codegen: CMakeFiles/starlet_trace.dir/codegen
 codegen: CMakeFiles/gh3_dol_scan.dir/codegen
+codegen: CMakeFiles/homebrew_gx_probe.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -94,6 +96,7 @@ clean: CMakeFiles/gh3_iso_probe.dir/clean
 clean: CMakeFiles/wii_firmware_probe.dir/clean
 clean: CMakeFiles/starlet_trace.dir/clean
 clean: CMakeFiles/gh3_dol_scan.dir/clean
+clean: CMakeFiles/homebrew_gx_probe.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -231,7 +234,7 @@ CMakeFiles/gh3_iso_probe.dir/clean:
 CMakeFiles/wii_firmware_probe.dir/all: CMakeFiles/broadwaycpu_core.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/wii_firmware_probe.dir/build.make CMakeFiles/wii_firmware_probe.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/wii_firmware_probe.dir/build.make CMakeFiles/wii_firmware_probe.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=31,32 "Built target wii_firmware_probe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=33,34 "Built target wii_firmware_probe"
 .PHONY : CMakeFiles/wii_firmware_probe.dir/all
 
 # Build rule for subdir invocation for target.
@@ -248,7 +251,7 @@ wii_firmware_probe: CMakeFiles/wii_firmware_probe.dir/rule
 # codegen rule for target.
 CMakeFiles/wii_firmware_probe.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/wii_firmware_probe.dir/build.make CMakeFiles/wii_firmware_probe.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=31,32 "Finished codegen for target wii_firmware_probe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=33,34 "Finished codegen for target wii_firmware_probe"
 .PHONY : CMakeFiles/wii_firmware_probe.dir/codegen
 
 # clean rule for target.
@@ -263,7 +266,7 @@ CMakeFiles/wii_firmware_probe.dir/clean:
 CMakeFiles/starlet_trace.dir/all: CMakeFiles/broadwaycpu_core.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/starlet_trace.dir/build.make CMakeFiles/starlet_trace.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/starlet_trace.dir/build.make CMakeFiles/starlet_trace.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=29,30 "Built target starlet_trace"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=31,32 "Built target starlet_trace"
 .PHONY : CMakeFiles/starlet_trace.dir/all
 
 # Build rule for subdir invocation for target.
@@ -280,7 +283,7 @@ starlet_trace: CMakeFiles/starlet_trace.dir/rule
 # codegen rule for target.
 CMakeFiles/starlet_trace.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/starlet_trace.dir/build.make CMakeFiles/starlet_trace.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=29,30 "Finished codegen for target starlet_trace"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=31,32 "Finished codegen for target starlet_trace"
 .PHONY : CMakeFiles/starlet_trace.dir/codegen
 
 # clean rule for target.
@@ -319,6 +322,38 @@ CMakeFiles/gh3_dol_scan.dir/codegen:
 CMakeFiles/gh3_dol_scan.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gh3_dol_scan.dir/build.make CMakeFiles/gh3_dol_scan.dir/clean
 .PHONY : CMakeFiles/gh3_dol_scan.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/homebrew_gx_probe.dir
+
+# All Build rule for target.
+CMakeFiles/homebrew_gx_probe.dir/all: CMakeFiles/broadwaycpu_core.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=29,30 "Built target homebrew_gx_probe"
+.PHONY : CMakeFiles/homebrew_gx_probe.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/homebrew_gx_probe.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles 22
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/homebrew_gx_probe.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles 0
+.PHONY : CMakeFiles/homebrew_gx_probe.dir/rule
+
+# Convenience name for target.
+homebrew_gx_probe: CMakeFiles/homebrew_gx_probe.dir/rule
+.PHONY : homebrew_gx_probe
+
+# codegen rule for target.
+CMakeFiles/homebrew_gx_probe.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/levi/source/repos/BroadwayCPU/C:/Users/levi/AppData/Local/Temp/broadwaycpu-gx-cmake-release/CMakeFiles --progress-num=29,30 "Finished codegen for target homebrew_gx_probe"
+.PHONY : CMakeFiles/homebrew_gx_probe.dir/codegen
+
+# clean rule for target.
+CMakeFiles/homebrew_gx_probe.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/clean
+.PHONY : CMakeFiles/homebrew_gx_probe.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

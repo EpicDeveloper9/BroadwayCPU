@@ -7,6 +7,7 @@
 #include "wii_boot.hpp"
 #include "wii_firmware.hpp"
 #include "arm_elf.hpp"
+#include "starlet_hardware.hpp"
 
 #include <bit>
 #include <cmath>
@@ -691,12 +692,42 @@ void TestIndexedFloatingPointMemory() {
     Equal(cpu.memory.Read32(0x14C), std::bit_cast<uint32_t>(5.5f), "stfsux stores the narrowed FPR value");
 
     cpu.registers.GPR[1] = 0x100;
+    cpu.memory.Write64(0x124, std::bit_cast<uint64_t>(-6.25));
+    cpu.registers.PC = 16;
+    cpu.memory.Write32(16, D(50, 9, 1, 0x24)); // lfd
+    cpu.Step();
+    Check(cpu.registers.FPR[9] == -6.25, "lfd permits the architecture's four-byte alignment");
+
+    cpu.registers.FPR[9] = 7.75;
+    cpu.registers.PC = 20;
+    cpu.memory.Write32(20, D(54, 9, 1, 0x24)); // stfd
+    cpu.Step();
+    Check(cpu.memory.Read64(0x124) == std::bit_cast<uint64_t>(7.75),
+          "stfd stores a double at a four-byte-aligned address");
+
+    cpu.registers.GPR[1] = 0x100;
     cpu.registers.GPR[2] = 0x28;
     cpu.memory.Write64(0x128, std::bit_cast<uint64_t>(3.125));
-    cpu.registers.PC = 8;
-    cpu.memory.Write32(8, X(5, 1, 2, 599)); // lfdx
+    cpu.registers.GPR[2] = 0x24;
+    cpu.registers.PC = 24;
+    cpu.memory.Write32(24, X(5, 1, 2, 599)); // lfdx
     cpu.Step();
-    Check(cpu.registers.FPR[5] == 3.125, "lfdx loads a big-endian IEEE double");
+    Check(std::bit_cast<uint64_t>(cpu.registers.FPR[5]) == cpu.memory.Read64(0x124),
+          "lfdx permits a four-byte-aligned double load");
+
+    cpu.registers.GPR[1] = 0x100;
+    cpu.registers.GPR[2] = 0x2C;
+    cpu.registers.FPR[10] = std::bit_cast<double>(0xFFF8000089ABCDEFu);
+    cpu.registers.PC = 28;
+    const uint32_t stfiwx = X(10, 1, 2, 983);
+    const auto decodedStfiwx = Broadway::Decoder::Decode(stfiwx);
+    Check(decodedStfiwx.recognized && decodedStfiwx.implemented &&
+          decodedStfiwx.type == Broadway::InstructionType::LoadStore,
+          "stfiwx is decoded into the indexed floating-point store path");
+    cpu.memory.Write32(28, stfiwx);
+    cpu.Step();
+    Equal(cpu.memory.Read32(0x12C), 0x89ABCDEFu,
+          "stfiwx stores the integer word held in the low word of an FPR");
 
     cpu.registers.GPR[1] = 0x100;
     cpu.registers.GPR[2] = 0x21;
@@ -811,13 +842,10 @@ void TestMtfsb1() {
     cpu.registers.FPSCR = 0x13579BDFu;
     cpu.registers.CR = 0x2468ACE0u;
     cpu.memory.Write32(16, mtfsb1_29);
-    bool unavailable = false;
-    try { cpu.Step(); }
-    catch (const Broadway::CPUException& e) {
-        unavailable = e.Kind() == Broadway::ExceptionKind::FloatingPointUnavailable;
-    }
-    Check(unavailable, "mtfsb1 faults when MSR[FP] is clear");
-    Equal(cpu.registers.PC, 16, "floating-point unavailable fault restores the faulting PC");
+    cpu.Step();
+    Equal(cpu.registers.PC, 0x800u, "floating-point unavailable enters its architectural vector");
+    Equal(cpu.registers.SRR0, 16u, "floating-point unavailable saves the faulting instruction for retry");
+    Equal(cpu.registers.SRR1, 0u, "floating-point unavailable saves the prior MSR");
     Equal(cpu.registers.FPSCR, 0x13579BDFu, "faulting mtfsb1 preserves FPSCR");
     Equal(cpu.registers.CR, 0x2468ACE0u, "faulting mtfsb1 preserves CR");
 }
@@ -959,6 +987,87 @@ void FeedBP(Broadway::GXProcessor& gx, uint8_t reg, uint32_t value) {
     gx.FeedCommandByte(uint8_t(value));
 }
 
+void FeedCP(Broadway::GXProcessor& gx, uint8_t reg, uint32_t value) {
+    for (uint8_t byte : {uint8_t(0x08), reg, uint8_t(value >> 24),
+                         uint8_t(value >> 16), uint8_t(value >> 8), uint8_t(value)})
+        gx.FeedCommandByte(byte);
+}
+
+void FeedXF(Broadway::GXProcessor& gx, uint16_t address,
+            const std::vector<uint32_t>& values) {
+    const uint32_t header = (uint32_t(values.size() - 1) << 16) | address;
+    for (uint8_t byte : {uint8_t(0x10), uint8_t(header >> 24), uint8_t(header >> 16),
+                         uint8_t(header >> 8), uint8_t(header)})
+        gx.FeedCommandByte(byte);
+    for (uint32_t value : values)
+        for (uint8_t byte : {uint8_t(value >> 24), uint8_t(value >> 16),
+                             uint8_t(value >> 8), uint8_t(value)})
+            gx.FeedCommandByte(byte);
+}
+
+void TestGXDirectQuadRasterization() {
+    Broadway::Memory memory(2u * 1024u * 1024u);
+    Broadway::VideoFrameMailbox mailbox;
+    Broadway::GXProcessor gx(memory, mailbox);
+
+    FeedCP(gx, 0x50, 0x00002200);
+    FeedCP(gx, 0x60, 0);
+    FeedCP(gx, 0x70, 0x00016009);
+    FeedCP(gx, 0x80, 0);
+    FeedCP(gx, 0x90, 0);
+    FeedXF(gx, 0, {
+        std::bit_cast<uint32_t>(1.0f), 0, 0, 0,
+        0, std::bit_cast<uint32_t>(1.0f), 0, 0,
+        0, 0, std::bit_cast<uint32_t>(1.0f), 0
+    });
+    FeedXF(gx, 0x101A, {
+        std::bit_cast<uint32_t>(320.0f), std::bit_cast<uint32_t>(-264.0f),
+        std::bit_cast<uint32_t>(1.0f), std::bit_cast<uint32_t>(662.0f),
+        std::bit_cast<uint32_t>(606.0f), std::bit_cast<uint32_t>(1.0f)
+    });
+    FeedXF(gx, 0x1020, {
+        std::bit_cast<uint32_t>(1.0f), 0, std::bit_cast<uint32_t>(1.0f),
+        0, std::bit_cast<uint32_t>(1.0f), 0, 1
+    });
+    FeedBP(gx, 0x20, (342u << 12) | 342u);
+    FeedBP(gx, 0x21, ((342u + 639u) << 12) | (342u + 527u));
+
+    auto vertex = [&gx](float x, float y, uint8_t r, uint8_t g, uint8_t b) {
+        const uint32_t position[] = {
+            std::bit_cast<uint32_t>(x), std::bit_cast<uint32_t>(y),
+            std::bit_cast<uint32_t>(0.0f)
+        };
+        for (uint32_t value : position)
+            for (uint8_t byte : {uint8_t(value >> 24), uint8_t(value >> 16),
+                                 uint8_t(value >> 8), uint8_t(value)})
+                gx.FeedCommandByte(byte);
+        for (uint8_t byte : {r, g, b, uint8_t(255)}) gx.FeedCommandByte(byte);
+    };
+    gx.FeedCommandByte(0x80);
+    gx.FeedCommandByte(0);
+    gx.FeedCommandByte(4);
+    vertex(-1.0f, -1.0f, 255, 0, 0);
+    vertex(1.0f, -1.0f, 0, 255, 0);
+    vertex(1.0f, 1.0f, 0, 0, 255);
+    vertex(-1.0f, 1.0f, 255, 255, 0);
+    Check(!gx.IsStalled(), "GX accepts a direct XYZ/F32 + RGBA8 quad");
+    Equal(gx.PrimitivesSubmitted(), uint64_t(1), "GX assembles one guest quad");
+    Check(gx.EfbPixelsWritten() > 300000,
+          "GX subtracts the hardware scissor bias and rasterizes the full quad into the EFB");
+    FeedBP(gx, 0x49, 0);
+    FeedBP(gx, 0x4A, (527u << 10) | 639u);
+    FeedBP(gx, 0x4B, 0x800);
+    FeedBP(gx, 0x4D, 40);
+    FeedBP(gx, 0x4E, 0x100);
+    FeedBP(gx, 0x52, 1u << 14);
+    const auto frame = mailbox.TakeLatest();
+    Check(bool(frame), "GX rasterized output reaches the existing frame mailbox by EFB copy");
+    Equal(frame->Width(), 640u, "GX quad copy publishes the configured frame width");
+    Equal(frame->Height(), 528u, "GX quad copy publishes the configured frame height");
+    Check(frame->Data()[size_t(264) * 1280 + 320 * 2] > 16,
+          "GX rasterized color reaches the copied frame pixels");
+}
+
 void TestGXCommandIngressAndCopy() {
     Broadway::Memory memory(2u * 1024u * 1024u);
     Broadway::VideoFrameMailbox mailbox;
@@ -968,6 +1077,9 @@ void TestGXCommandIngressAndCopy() {
     auto result = gx.FeedCommandByte(0x00);
     Check(result.accepted && result.kind == Broadway::GXCommandKind::Nop,
           "GX FIFO NOP command decodes as a one-byte command");
+    result = gx.FeedCommandByte(0x48);
+    Check(result.accepted && result.kind == Broadway::GXCommandKind::InvalidateVertexCache,
+          "GX FIFO vertex-cache invalidation command is accepted without inventing geometry");
     result = gx.FeedCommandByte(0x08);
     Check(!result.accepted, "GX CP load begins as a multi-byte FIFO command");
     for (uint8_t byte : {uint8_t(0x30),uint8_t(0x12),uint8_t(0x34),uint8_t(0x56),uint8_t(0x78)})
@@ -978,16 +1090,26 @@ void TestGXCommandIngressAndCopy() {
         result = gx.FeedCommandByte(byte);
     Check(result.accepted && result.kind == Broadway::GXCommandKind::LoadBP,
           "GX BP load command decodes register writes");
-    for (uint8_t byte : {uint8_t(0x10),uint8_t(0x00),uint8_t(0x02),uint8_t(0x12),uint8_t(0x34),uint8_t(0x56),uint8_t(0x78)})
+    for (uint8_t byte : {uint8_t(0x10),uint8_t(0x00),uint8_t(0x00),uint8_t(0x00),uint8_t(0x02),
+                         uint8_t(0x12),uint8_t(0x34),uint8_t(0x56),uint8_t(0x78)})
         result = gx.FeedCommandByte(byte);
     Check(result.accepted && result.kind == Broadway::GXCommandKind::LoadXF,
-          "GX XF register-load command honors its declared word count");
+          "GX XF register-load command honors its 32-bit address and count header");
+    for (uint8_t byte : {uint8_t(0x10),uint8_t(0x00),uint8_t(0x00),uint8_t(0x10),uint8_t(0x00),
+                         uint8_t(0x00),uint8_t(0x00),uint8_t(0x00),uint8_t(0x3F)})
+        result = gx.FeedCommandByte(byte);
+    Check(result.accepted && result.kind == Broadway::GXCommandKind::LoadXF,
+          "GX XF command accepts the libogc bootstrap register-load encoding");
     const uint64_t beforeMmio = gx.CommandsProcessed();
     memory.Write8(0xCC008000u,0x00);
     Equal(gx.CommandsProcessed(),beforeMmio+1,"CPU memory bus forwards FIFO port writes to the GX parser");
     memory.Write8(0x0C008000u,0x00);
     Equal(gx.CommandsProcessed(),beforeMmio+2,"Uncached physical FIFO alias reaches the same GX command ingress");
     Equal(gx.MmioWrites(),2u,"GX tracks FIFO accesses forwarded through the MMIO bus");
+    memory.Write64(0xCC008000u, 0);
+    Equal(gx.CommandsProcessed(),beforeMmio+10,
+          "A paired 64-bit FIFO store is forwarded as two ordered big-endian words");
+    Equal(gx.MmioWrites(),4u,"Each word of a paired FIFO store is recorded as a bus write");
 
     gx.SetEfbPixel(0,0,255,0,0);
     gx.SetEfbPixel(1,0,0,0,255);
@@ -1011,16 +1133,42 @@ void TestGXCommandIngressAndCopy() {
     Equal(memory.Read8(0x10000u),uint8_t(82),"GX copy writes the XFB bytes into Broadway memory");
     Equal(memory.Read16(0xCC000000u),uint16_t(12),"GX CP status is available through the MMIO bus");
     Equal(gx.MmioReads(),1u,"GX tracks MMIO reads");
+    memory.Write16(0xCC000020u, 0x8100);
+    memory.Write16(0x0C000022u, 0x1234);
+    Equal(memory.Read16(0xCC000020u), uint16_t(0x8100),
+          "GX CP FIFO base register retains its high halfword");
+    Equal(memory.Read16(0x0C000022u), uint16_t(0x1234),
+          "GX CP FIFO low register is accessible through the physical alias");
+    memory.Write16(0xCC00100Au, 0x000F);
+    Equal(memory.Read16(0xCC00100Au), uint16_t(0),
+          "GX Pixel Engine interrupt status is cleared by write-one-to-clear bits");
+    memory.Write16(0xCC001002u, 0xA55A);
+    Equal(memory.Read16(0xCC001002u), uint16_t(0xA55A),
+          "GX Pixel Engine alpha configuration retains its read-modify-write state");
+    memory.Write16(0xCC001006u, 0x0023);
+    Equal(memory.Read16(0xCC001006u), uint16_t(0x0023),
+          "GX Pixel Engine alpha mode register retains its configuration");
+    memory.Write16(0xCC001004u, 0x01A5);
+    memory.Write16(0xCC001008u, 0x0005);
+    Equal(memory.Read16(0xCC001004u), uint16_t(0x01A5),
+          "GX Pixel Engine destination alpha register retains its value");
+    Equal(memory.Read16(0xCC001008u), uint16_t(0x0005),
+          "GX Pixel Engine alpha read register retains its mode");
+    memory.Write16(0xCC000006u, 0xFFFF);
+    Equal(memory.Read16(0xCC000006u), uint16_t(7),
+          "GX CP performance selector retains only its three documented selection bits");
     bool unsupportedRegisterRead=false;
-    try { (void)memory.Read16(0xCC000006u); }
+    try { (void)memory.Read16(0xCC000008u); }
     catch (const std::runtime_error&) { unsupportedRegisterRead=true; }
     Check(unsupportedRegisterRead,"Unimplemented GX register reads report unsupported behavior instead of fabricated values");
-    Equal(gx.MmioReads(),2u,"GX counts unsupported register read attempts as MMIO activity");
+    Equal(gx.MmioReads(),10u,"GX counts unsupported register read attempts as MMIO activity");
 
     Broadway::GXProcessor unsupported(memory, mailbox);
-    result=unsupported.FeedCommandByte(0x80);
+    unsupported.FeedCommandByte(0x88);
+    unsupported.FeedCommandByte(0);
+    result=unsupported.FeedCommandByte(4);
     Check(!result.accepted && unsupported.IsStalled() && !unsupported.LastError().empty(),
-          "Unimplemented GX primitive is reported and stalls instead of fabricating pixels");
+          "Unsupported GX primitive topology is rejected with a diagnostic");
     Broadway::GXProcessor invalid(memory, mailbox);
     result=invalid.FeedCommandByte(0x7F);
     Check(!result.accepted && invalid.IsStalled() && !invalid.LastError().empty(),
@@ -1294,6 +1442,17 @@ void TestWiiFirmwareInventory() {
     std::filesystem::remove_all(root);
 }
 
+void TestWiiSystemEnvironmentState() {
+    const auto root = std::filesystem::path(__FILE__).parent_path();
+    const auto env = Broadway::WiiSystemEnvironment::Inspect(root);
+    Check(env.hasSystemMenuTmd && env.hasIosTmd && env.requiredIosTitleId == 0x0000000100000050ull,
+          "NAND environment detection resolves the actual System Menu and required IOS title from the extracted Wii files");
+    Check(env.bootStage == Broadway::WiiBootStage::Boot2Missing || env.bootStage == Broadway::WiiBootStage::BootFilesAvailable,
+          "NAND environment classification distinguishes real title inventory from an implemented boot runtime");
+    Check(env.status.find("boot runtime") != std::string::npos || env.status.find("boot2") != std::string::npos,
+          "NAND environment exposes an honest status describing the remaining boot-chain gap");
+}
+
 void TestHomebrewDol() {
     const std::filesystem::path path = "Wii_Hello_World.dol";
     if (!std::filesystem::exists(path)) {
@@ -1371,6 +1530,89 @@ void TestHomebrewDol() {
         std::cout << "\n";
     }
 }
+void TestStarletArmCp15() {
+    Broadway::StarletArm arm(0x4000);
+    arm.SetCp15Register(1, 0x1u);
+    arm.SetCp15Register(2, 0x1000u);
+    arm.memory[0x1000] = 0x12; arm.memory[0x1001] = 0x34; arm.memory[0x1002] = 0x50; arm.memory[0x1003] = 0x02;
+    Check(arm.GetCp15Register(1) == 0x1u && arm.mmuEnabled,
+          "Starlet CP15 control register enables the MMU when bit 0 is set");
+    Check(arm.GetCp15Register(2) == 0x1000u && arm.TTBR0 == 0x1000u,
+          "Starlet CP15 translation-table base register retains its value");
+    Check(arm.TranslateVirtualAddress(0x00001000u) == 0x12301000u,
+          "Starlet virtual-address translation resolves a section descriptor from the first-level page table");
+    arm.SetCp15Register(1, 0x0u);
+    Check(!arm.mmuEnabled && arm.TranslateVirtualAddress(0x12345678u) == 0x12345678u,
+          "Starlet virtual-address translation returns the original address when the MMU is disabled");
+}
+
+void TestStarletSparseAddressSpace() {
+    Broadway::StarletArm arm;
+    Check(arm.memory.size() == size_t(0x100000000ull),
+          "Starlet models a 32-bit address space without eagerly allocating it");
+    Check(arm.InMemory(0x005C1FA4u) && arm.InMemory(0x10000000u) &&
+          arm.InMemory(0x13FFFFFFu) && !arm.InMemory(0x20000000u),
+          "Starlet maps documented MEM1 and MEM2 RAM ranges without treating other addresses as RAM");
+    Equal(arm.memory.AllocatedPages(), size_t(0),
+          "Starlet address space starts with no committed backing pages");
+    bool unmappedFault = false;
+    try { (void)arm.Read32(0xFFFF0000u); }
+    catch (const std::exception&) { unmappedFault = true; }
+    Check(unmappedFault, "Unmapped Starlet addresses fault instead of behaving like RAM");
+    Equal(arm.memory.AllocatedPages(), size_t(0),
+          "A rejected Starlet memory access does not allocate backing pages");
+    arm.memory.MapRange(0xFFFF0000u, 0x1000u);
+    arm.Write32(0xFFFF0000u, 0xE3A00001u);
+    Equal(arm.Read32(0xFFFF0000u), 0xE3A00001u,
+          "Starlet sparse memory stores and fetches a high-address ARM instruction");
+    Equal(arm.memory.AllocatedPages(), size_t(1),
+          "A Starlet write commits only the affected memory page");
+    uint32_t mmioAddress = 0;
+    arm.mmioRead = [&](uint32_t address) { mmioAddress = address; return 0x12345678u; };
+    Equal(arm.Read32(0x0D80018Cu), 0x12345678u,
+          "Unmapped Starlet hardware reads are dispatched to the MMIO interface");
+    Equal(mmioAddress, 0x0D80018Cu,
+          "Starlet MMIO dispatch preserves the guest hardware address");
+}
+
+void TestStarletHardwareRegisters() {
+    Broadway::StarletHardware hardware;
+    Check((hardware.Read(Broadway::StarletHardware::HwBoot0, 4) &
+           Broadway::StarletHardware::BootRomDisabled) == 0,
+          "Starlet reset exposes the boot ROM mapping");
+    const uint32_t boot0 = hardware.Read(Broadway::StarletHardware::HwBoot0, 4);
+    hardware.Write(Broadway::StarletHardware::HwBoot0, 4,
+                   boot0 | Broadway::StarletHardware::BootRomDisabled);
+    Check((hardware.Read(Broadway::StarletHardware::HwBoot0, 4) &
+           Broadway::StarletHardware::BootRomDisabled) != 0,
+          "HW_BOOT0 bit 12 disables boot ROM visibility and retains its state");
+    hardware.Write(Broadway::StarletHardware::HwSrnProt, 4, 0x20u);
+    Equal(hardware.Read(Broadway::StarletHardware::HwSrnProt, 4), 0x20u,
+          "HW_SRNPROT retains the SRAM mapping control written by IOS");
+    bool widthFault = false;
+    try { (void)hardware.Read(Broadway::StarletHardware::HwBoot0, 2); }
+    catch (const std::exception&) { widthFault = true; }
+    Check(widthFault, "Starlet hardware rejects unsupported register access widths");
+    bool addressFault = false;
+    try { (void)hardware.Read(0x0D800000u, 4); }
+    catch (const std::exception&) { addressFault = true; }
+    Check(addressFault, "Unknown Starlet registers remain explicit instead of returning fabricated values");
+    Broadway::StarletArm arm;
+    arm.mmioReadAccess = [&](uint32_t address, unsigned width) {
+        return hardware.Read(address, width);
+    };
+    arm.mmioWriteAccess = [&](uint32_t address, unsigned width, uint32_t value) {
+        hardware.Write(address, width, value);
+    };
+    arm.Write32(Broadway::StarletHardware::HwBoot0, Broadway::StarletHardware::BootRomDisabled);
+    Equal(arm.Read32(Broadway::StarletHardware::HwBoot0), Broadway::StarletHardware::BootRomDisabled,
+          "Starlet CPU MMIO reads and writes route through the register model with width information");
+    bool cpuWidthFault = false;
+    try { (void)arm.Read16(Broadway::StarletHardware::HwBoot0); }
+    catch (const std::exception&) { cpuWidthFault = true; }
+    Check(cpuWidthFault, "Starlet CPU preserves the access width when dispatching hardware reads");
+}
+
 void TestStarletArmCore() {
     std::vector<uint8_t> elf(52 + 32 + 4, 0);
     elf[0]=0x7f; elf[1]='E'; elf[2]='L'; elf[3]='F'; elf[4]=1; elf[5]=2;
@@ -1384,6 +1626,37 @@ void TestStarletArmCore() {
     Broadway::StarletArm arm(0x1000); arm.R[1]=7; arm.R[2]=5; arm.R[15]=0x100; arm.Write32(0x100,0xE0810002); arm.Step();
     Check(arm.R[0] == 12 && arm.R[15] == 0x104 && arm.instructions == 1,
           "Starlet ARM core executes data-processing ADD and advances PC");
+    Broadway::StarletArm branchArm(0x1000);
+    branchArm.R[15]=0x100; branchArm.R[14]=0xAABBCCDDu;
+    branchArm.Write32(0x100,0xEA000000u); // B to PC+8
+    branchArm.Step();
+    Check(branchArm.R[15]==0x108 && branchArm.R[14]==0xAABBCCDDu,
+          "Starlet ARM B branches to PC+8 without clobbering LR");
+    branchArm.R[15]=0x100;
+    branchArm.Write32(0x100,0xEB000000u); // BL to PC+8
+    branchArm.Step();
+    Check(branchArm.R[15]==0x108 && branchArm.R[14]==0x104,
+          "Starlet ARM BL stores the address of the following instruction in LR");
+
+    Broadway::StarletArm statusArm(0x1000);
+    statusArm.SetSPSR(0xA00000D2u);
+    statusArm.R[15] = 0x100;
+    statusArm.Write32(0x100, 0xE14F0000u); // MRS r0, SPSR
+    statusArm.Step();
+    Equal(statusArm.R[0], 0xA00000D2u,
+          "Starlet ARM MRS reads SPSR rather than CPSR");
+    statusArm.R[1] = 0x600000D3u;
+    statusArm.R[15] = 0x100;
+    statusArm.Write32(0x100, 0xE16FF001u); // MSR SPSR_fsxc, r1
+    statusArm.Step();
+    Equal(statusArm.SPSR(), 0x600000D3u,
+          "Starlet ARM MSR writes selected fields of SPSR");
+    statusArm.R[1] = 0x800000D3u;
+    statusArm.R[15] = 0x100;
+    statusArm.Write32(0x100, 0xE12FF001u); // MSR CPSR_fsxc, r1
+    statusArm.Step();
+    Equal(statusArm.CPSR, 0x800000D3u,
+          "Starlet ARM MSR CPSR remains distinct from MSR SPSR");
 }
 
 void TestStarletArmThumbAndExceptions() {
@@ -1427,17 +1700,24 @@ void TestStarletIosBootContent() {
     PutBE16(elf,16,2); PutBE16(elf,18,40); PutBE32(elf,24,0xffff0000u); PutBE32(elf,28,52);
     PutBE16(elf,40,32); PutBE16(elf,44,1);
     PutBE32(elf,52,1); PutBE32(elf,56,84); PutBE32(elf,60,0xffff0000u);
-    PutBE32(elf,64,4); PutBE32(elf,68,4); PutBE32(elf,72,4); PutBE32(elf,76,5);
+    PutBE32(elf,64,0xffff0000u); PutBE32(elf,68,4); PutBE32(elf,72,4); PutBE32(elf,76,5);
     PutBE32(elf,84,0xE1A00000u); // MOV r0, r0
     std::vector<uint8_t> container(16 + 4 + elf.size(), 0);
     PutBE32(container,0,0x00000010u);
     PutBE32(container,4,0x00000004u);
     PutBE32(container,8,uint32_t(elf.size()));
     PutBE32(container,12,0);
+    container[16] = 0x12;
+    container[17] = 0x34;
+    container[18] = 0x56;
+    container[19] = 0x78;
     std::copy(elf.begin(), elf.end(), container.begin() + 20);
     auto image = Broadway::ArmElfLoader::ParseIosBootContent(container);
     Check(image.entry == 0xffff0000u && image.segments.size() == 1,
           "IOS boot content parser extracts its embedded ELF and validates its entry point");
+    Check(image.bootPayload.size() == 4 && image.bootPayload[0] == 0x12 &&
+          image.bootPayload[3] == 0x78,
+          "IOS boot content parser preserves the genuine pre-ELF payload instead of discarding it");
     Broadway::StarletArm arm(0x100000000ull);
     arm.Load(image);
     Check(arm.R[15] == 0xffff0000u && arm.Read32(0xffff0000u) == 0xE1A00000u,
@@ -1453,7 +1733,7 @@ void TestStarletArmElfLoading() {
     PutBE16(elf,16,2); PutBE16(elf,18,40); PutBE32(elf,24,0x100); PutBE32(elf,28,52);
     PutBE16(elf,40,32); PutBE16(elf,44,1);
     PutBE32(elf,52,1); PutBE32(elf,56,84); PutBE32(elf,60,0x100);
-    PutBE32(elf,64,4); PutBE32(elf,68,4); PutBE32(elf,72,8); PutBE32(elf,76,5);
+    PutBE32(elf,64,0x100); PutBE32(elf,68,4); PutBE32(elf,72,8); PutBE32(elf,76,5);
     PutBE32(elf,84,0xE0810002);
     auto image = Broadway::ArmElfLoader::Parse(elf);
     Check(image.segments.size() == 1 && image.segments[0].fileSize == 4 && image.segments[0].memorySize == 8,
@@ -1463,6 +1743,21 @@ void TestStarletArmElfLoading() {
     Check(arm.R[15] == 0x100, "ARM ELF loader sets PC to entry point");
     Check(arm.Read32(0x100) == 0xE0810002, "ARM ELF loader copies PT_LOAD file bytes");
     Check(arm.Read32(0x104) == 0, "ARM ELF loader zeroes BSS tail");
+
+    PutBE32(elf,24,0x20000000u);
+    PutBE32(elf,60,0x20000000u);
+    PutBE32(elf,64,0x10001000u);
+    auto physicalImage = Broadway::ArmElfLoader::Parse(elf);
+    Broadway::StarletArm physicalArm;
+    physicalArm.Load(physicalImage);
+    Check(physicalArm.Read32(0x10001000u) == 0xE0810002u &&
+          physicalImage.segments[0].address == 0x20000000u &&
+          physicalImage.segments[0].physicalAddress == 0x10001000u,
+          "Starlet ELF loading places PT_LOAD bytes at p_paddr while preserving the virtual address");
+    bool virtualUnmapped = false;
+    try { (void)physicalArm.Read32(0x20000000u); }
+    catch (const std::exception&) { virtualUnmapped = true; }
+    Check(virtualUnmapped, "Starlet does not silently treat an ELF virtual address as physical RAM");
 }
 
 int main() {
@@ -1481,12 +1776,17 @@ int main() {
         TestPairedSingle();
         TestDecoder();
         TestVideoFrames();
+        TestGXDirectQuadRasterization();
         TestGXCommandIngressAndCopy();
         TestExecutableLoading();
         TestWiiDiscImageReader();
         TestSystemCallExceptionEntry();
         TestWiiBootLowMemory();
         TestWiiFirmwareInventory();
+        TestWiiSystemEnvironmentState();
+        TestStarletArmCp15();
+        TestStarletSparseAddressSpace();
+        TestStarletHardwareRegisters();
         TestStarletArmCore();
         TestHomebrewDol();
         TestStarletArmThumbAndExceptions();

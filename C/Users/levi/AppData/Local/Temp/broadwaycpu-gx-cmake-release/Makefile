@@ -217,6 +217,19 @@ gh3_dol_scan/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gh3_dol_scan.dir/build.make CMakeFiles/gh3_dol_scan.dir/build
 .PHONY : gh3_dol_scan/fast
 
+#=============================================================================
+# Target rules for targets named homebrew_gx_probe
+
+# Build rule for target.
+homebrew_gx_probe: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 homebrew_gx_probe
+.PHONY : homebrew_gx_probe
+
+# fast build rule for target.
+homebrew_gx_probe/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/build
+.PHONY : homebrew_gx_probe/fast
+
 arm_elf.o: arm_elf.cpp.o
 .PHONY : arm_elf.o
 
@@ -697,6 +710,30 @@ tools/gh3_startup_probe.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gh3_startup_probe.dir/build.make CMakeFiles/gh3_startup_probe.dir/tools/gh3_startup_probe.cpp.s
 .PHONY : tools/gh3_startup_probe.cpp.s
 
+tools/homebrew_gx_probe.o: tools/homebrew_gx_probe.cpp.o
+.PHONY : tools/homebrew_gx_probe.o
+
+# target to build an object file
+tools/homebrew_gx_probe.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/tools/homebrew_gx_probe.cpp.o
+.PHONY : tools/homebrew_gx_probe.cpp.o
+
+tools/homebrew_gx_probe.i: tools/homebrew_gx_probe.cpp.i
+.PHONY : tools/homebrew_gx_probe.i
+
+# target to preprocess a source file
+tools/homebrew_gx_probe.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/tools/homebrew_gx_probe.cpp.i
+.PHONY : tools/homebrew_gx_probe.cpp.i
+
+tools/homebrew_gx_probe.s: tools/homebrew_gx_probe.cpp.s
+.PHONY : tools/homebrew_gx_probe.s
+
+# target to generate assembly for a file
+tools/homebrew_gx_probe.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/homebrew_gx_probe.dir/build.make CMakeFiles/homebrew_gx_probe.dir/tools/homebrew_gx_probe.cpp.s
+.PHONY : tools/homebrew_gx_probe.cpp.s
+
 tools/starlet_trace.o: tools/starlet_trace.cpp.o
 .PHONY : tools/starlet_trace.o
 
@@ -831,6 +868,7 @@ help:
 	@echo "... gh3_dol_scan"
 	@echo "... gh3_iso_probe"
 	@echo "... gh3_startup_probe"
+	@echo "... homebrew_gx_probe"
 	@echo "... starlet_trace"
 	@echo "... wii_firmware_probe"
 	@echo "... arm_elf.o"
@@ -893,6 +931,9 @@ help:
 	@echo "... tools/gh3_startup_probe.o"
 	@echo "... tools/gh3_startup_probe.i"
 	@echo "... tools/gh3_startup_probe.s"
+	@echo "... tools/homebrew_gx_probe.o"
+	@echo "... tools/homebrew_gx_probe.i"
+	@echo "... tools/homebrew_gx_probe.s"
 	@echo "... tools/starlet_trace.o"
 	@echo "... tools/starlet_trace.i"
 	@echo "... tools/starlet_trace.s"

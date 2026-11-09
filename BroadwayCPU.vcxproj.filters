@@ -63,6 +63,9 @@
     <ClInclude Include="arm_elf.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="starlet_hardware.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -126,6 +129,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="arm_elf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="starlet_hardware.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

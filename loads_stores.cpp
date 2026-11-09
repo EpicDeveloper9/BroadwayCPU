@@ -1,4 +1,5 @@
 #include "cpu.hpp"
+#include <bit>
 #include <cstdint>
 
 namespace Broadway {
@@ -41,6 +42,15 @@ void CPU::ExecuteLoadStore(const Instruction& ins) {
     };
     if (op == 31) {
         const unsigned xo = (raw >> 1) & 0x3FFu;
+        if (xo == 983) {
+            if ((registers.MSR & CPURegisters::MSR_FP) == 0)
+                throw CPUException(ExceptionKind::FloatingPointUnavailable,lastInstructionPC,
+                                   "stfiwx while MSR[FP] is clear");
+            const uint32_t ea = (ra ? g[ra] : 0u) + g[ins.rb];
+            align(ea,4);
+            write32(ea,uint32_t(std::bit_cast<uint64_t>(registers.FPR[rt])));
+            return;
+        }
         if (xo == 534 || xo == 662 || xo == 790 || xo == 918) {
             const uint32_t ea = (ra ? g[ra] : 0u) + g[ins.rb];
             if (xo == 534 || xo == 662) {

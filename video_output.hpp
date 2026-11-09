@@ -3,6 +3,8 @@
 #include <windows.h>
 
 #include <d2d1.h>
+#include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <wrl/client.h>
 
@@ -21,7 +23,10 @@ public:
     void ToggleFullscreen();
     void SetDiagnosticMode(bool enabled);
     void ClearFrame();
+    void SaveCurrentFrameBmp(const std::filesystem::path& path) const;
     bool IsOpen() const noexcept { return window != nullptr; }
+    bool HasFrame() const noexcept { return bool(currentFrame); }
+    uint64_t FramePresentations() const noexcept { return framePresentations; }
     static LRESULT CALLBACK StaticWindowProc(HWND, UINT, WPARAM, LPARAM);
 
 private:
@@ -42,6 +47,7 @@ private:
     RECT savedWindowRect{};
     std::shared_ptr<NotifyState> notifyState;
     std::shared_ptr<const VideoFrame> currentFrame;
+    uint64_t framePresentations = 0;
     Microsoft::WRL::ComPtr<ID2D1Factory> factory;
     Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> renderTarget;
     Microsoft::WRL::ComPtr<ID2D1Bitmap> frameBitmap;

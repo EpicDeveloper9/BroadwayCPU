@@ -16,7 +16,7 @@ set(BROADWAYCPU_CORE_SOURCES
     paired_single.cpp
     registers.cpp
     system.cpp)
-list(APPEND BROADWAYCPU_CORE_SOURCES video_frame.cpp gx.cpp wii_boot.cpp wii_firmware.cpp arm_elf.cpp)
+list(APPEND BROADWAYCPU_CORE_SOURCES video_frame.cpp gx.cpp wii_boot.cpp wii_firmware.cpp arm_elf.cpp starlet_hardware.cpp)
 
 add_library(broadwaycpu_core STATIC ${BROADWAYCPU_CORE_SOURCES})
 target_compile_features(broadwaycpu_core PUBLIC cxx_std_20)
@@ -53,6 +53,10 @@ target_compile_features(wii_firmware_probe PRIVATE cxx_std_20)
 add_executable(gh3_dol_scan tools/gh3_dol_scan.cpp)
 target_link_libraries(gh3_dol_scan PRIVATE broadwaycpu_core)
 target_compile_features(gh3_dol_scan PRIVATE cxx_std_20)
+
+add_executable(homebrew_gx_probe tools/homebrew_gx_probe.cpp)
+target_link_libraries(homebrew_gx_probe PRIVATE broadwaycpu_core)
+target_compile_features(homebrew_gx_probe PRIVATE cxx_std_20)
 
 enable_testing()
 add_test(NAME broadwaycpu_core_tests COMMAND broadwaycpu_tests)

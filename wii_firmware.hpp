@@ -48,10 +48,39 @@ struct WiiFirmwareInventory {
     std::string status;
 };
 
+enum class WiiBootStage {
+    Boot2Missing,
+    SystemMenuMissing,
+    IosMetadataMissing,
+    BootFilesAvailable,
+    RuntimePending
+};
+
+struct WiiSystemEnvironment {
+    std::filesystem::path nandRoot;
+    uint64_t systemMenuTitleId = 0;
+    uint64_t requiredIosTitleId = 0;
+    bool hasBoot2 = false;
+    bool hasSystemMenuTmd = false;
+    bool hasSystemMenuBootContent = false;
+    bool hasSystemMenuTicket = false;
+    bool hasIosTmd = false;
+    bool hasIosBootContent = false;
+    bool hasIosTicket = false;
+    bool hasAllRequiredFiles = false;
+    size_t iosContentFilesPresent = 0;
+    size_t iosContentFilesTotal = 0;
+    WiiBootStage bootStage = WiiBootStage::RuntimePending;
+    std::string status;
+
+    static WiiSystemEnvironment Inspect(const std::filesystem::path& root);
+};
+
 class WiiFirmwareInspector {
 public:
     static WiiTitleMetadata ParseTmd(const std::vector<uint8_t>& bytes);
     static WiiFirmwareInventory InspectNand(const std::filesystem::path& root);
+    static WiiSystemEnvironment InspectEnvironment(const std::filesystem::path& root);
 };
 
 } // namespace Broadway

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -15,6 +16,11 @@ uint32_t IndexToMode(int idx) {
     static const uint32_t modes[] = {0x10,0x11,0x12,0x13,0x17,0x1B,0x10};
     if (idx < 0 || idx > 6) return 0x10;
     return modes[idx];
+}
+std::string StarletAccessFault(const char* operation, uint32_t address) {
+    std::ostringstream message;
+    message << "Starlet unmapped " << operation << " at 0x" << std::hex << address;
+    return message.str();
 }
 int ModeToIndex(uint32_t mode) {
     switch (mode) {
@@ -47,12 +53,7 @@ ArmElfImage ArmElfLoader::Parse(const std::vector<uint8_t>& b) {
         ArmElfSegment s;
         s.offset = B32(b, p + 4);
         s.address = B32(b, p + 8); // p_vaddr
-        // p_paddr at p+12
-        s.fileSize = B32(b, p + 16); // p_filesz? Actually for 32-bit: p_offset(4), p_vaddr(8), p_paddr(12), p_filesz(16), p_memsz(20), p_flags(24)
-        // Re-read correctly:
-        s.offset = B32(b, p + 4);
-        s.address = B32(b, p + 8);
-        (void)B32(b, p + 12);
+        s.physicalAddress = B32(b, p + 12);
         s.fileSize = B32(b, p + 16);
         s.memorySize = B32(b, p + 20);
         s.flags = B32(b, p + 24);
@@ -114,9 +115,11 @@ ArmElfImage ArmElfLoader::ParseIosBootContent(const std::vector<uint8_t>& b) {
     if (uint64_t(headerSize) + firstSize + elfSize != b.size()) throw std::runtime_error("IOS boot content size mismatch");
     const size_t elfOffset = headerSize + firstSize;
     if (elfOffset + elfSize != b.size()) throw std::runtime_error("IOS boot content ELF bounds are invalid");
+    const std::vector<uint8_t> bootPayload(b.begin() + headerSize, b.begin() + elfOffset);
     std::vector<uint8_t> elf(b.begin() + elfOffset, b.begin() + elfOffset + elfSize);
     ArmElfImage image = Parse(elf);
     if (image.entry != 0xffff0000u) throw std::runtime_error("IOS boot content ELF entry is unexpected");
+    image.bootPayload = bootPayload;
     return image;
 }
 
@@ -126,100 +129,205 @@ ArmElfImage ArmElfLoader::LoadFile(const std::filesystem::path& p) {
     return Parse({std::istreambuf_iterator<char>(f), {}});
 }
 
+StarletMemory::StarletMemory(size_t size) : addressSpaceSize(size) {
+    if (size <= 64u * 1024u * 1024u) MapRange(0, size);
+}
+
+void StarletMemory::MapRange(uint32_t address, size_t byteCount) {
+    if (byteCount == 0) return;
+    const uint64_t start = address;
+    const uint64_t end = start + byteCount;
+    if (end > addressSpaceSize || end > 0x100000000ull)
+        throw std::out_of_range("Starlet RAM mapping exceeds the configured address space.");
+    mappedRanges.emplace_back(start, end);
+}
+
+bool StarletMemory::IsMapped(uint32_t address, size_t byteCount) const noexcept {
+    if (byteCount == 0) return true;
+    const uint64_t start = address;
+    const uint64_t end = start + byteCount;
+    if (end > addressSpaceSize || end > 0x100000000ull) return false;
+    for (const auto& range : mappedRanges)
+        if (start >= range.first && end <= range.second) return true;
+    return false;
+}
+
+uint8_t& StarletMemory::operator[](size_t address) {
+    if (address > UINT32_MAX || !IsMapped(static_cast<uint32_t>(address)))
+        throw std::out_of_range("Starlet memory address is not mapped as RAM.");
+    const size_t pageIndex = address / kPageSize;
+    auto& page = pages[pageIndex];
+    if (!page) page = std::make_unique<std::array<uint8_t, kPageSize>>();
+    return (*page)[address % kPageSize];
+}
+
+uint8_t StarletMemory::operator[](size_t address) const {
+    if (address > UINT32_MAX || !IsMapped(static_cast<uint32_t>(address)))
+        throw std::out_of_range("Starlet memory address is not mapped as RAM.");
+    const auto it = pages.find(address / kPageSize);
+    if (it == pages.end()) return 0;
+    return (*it->second)[address % kPageSize];
+}
+
 StarletArm::StarletArm(size_t n) : memory(n) {
     currentModeIndex = 3;
     CPSR = 0xD3;
+    CP15[0] = 0x41069265u; // ARM926EJ-S ID register value.
+    if (n > 64u * 1024u * 1024u) {
+        const size_t mem1Size = std::min<size_t>(0x01800000u, n);
+        memory.MapRange(0, mem1Size);
+        if (n > 0x10000000u) {
+            const size_t mem2Size = std::min<size_t>(0x04000000u, n - 0x10000000u);
+            if (mem2Size != 0) memory.MapRange(0x10000000u, mem2Size);
+        }
+    }
     // initialize banked storage zero
+}
+
+void StarletArm::SetCp15Register(uint32_t reg, uint32_t value) {
+    if (reg >= 16) return;
+    CP15[reg] = value;
+    switch (reg) {
+        case 0: CP15[0] = value; break;
+        case 1: mmuEnabled = (value & 1u) != 0; break;
+        case 2: TTBR0 = value; break;
+        case 3: DACR = value; break;
+        case 5: DFSR = value; break;
+        case 6: IFSR = value; break;
+        case 8: break;
+        default: break;
+    }
+}
+
+uint32_t StarletArm::GetCp15Register(uint32_t reg) const {
+    return reg < 16 ? CP15[reg] : 0u;
+}
+
+uint32_t StarletArm::TranslateVirtualAddress(uint32_t addr) const {
+    if (!mmuEnabled) return addr;
+    const uint32_t base = TTBR0 & ~0x3FFu;
+    const uint32_t firstLevelIndex = (addr >> 20) & 0xFFFu;
+    const uint32_t firstLevelOffset = base + firstLevelIndex * 4u;
+    if (!InMemory(firstLevelOffset, 4)) return addr;
+    const uint32_t firstLevel = (uint32_t(memory[firstLevelOffset]) << 24) |
+        (uint32_t(memory[firstLevelOffset + 1u]) << 16) |
+        (uint32_t(memory[firstLevelOffset + 2u]) << 8) |
+        uint32_t(memory[firstLevelOffset + 3u]);
+    const uint32_t descriptorType = firstLevel & 0x3u;
+    if (descriptorType == 0u) return addr;
+    if (descriptorType == 0x1u) {
+        const uint32_t coarseBase = firstLevel & 0xFFFFFC00u;
+        const uint32_t coarseIndex = ((addr >> 10) & 0x3Fu) * 4u;
+        const uint32_t coarseOffset = coarseBase + coarseIndex;
+        if (!InMemory(coarseOffset, 4)) return addr;
+        const uint32_t coarse = (uint32_t(memory[coarseOffset]) << 24) |
+            (uint32_t(memory[coarseOffset + 1u]) << 16) |
+            (uint32_t(memory[coarseOffset + 2u]) << 8) |
+            uint32_t(memory[coarseOffset + 3u]);
+        if ((coarse & 0x3u) == 0u) return addr;
+        return (coarse & 0xFFFFFC00u) | (addr & 0x3FFu);
+    }
+    if (descriptorType == 0x2u) {
+        return (firstLevel & 0xFFF00000u) | (addr & 0x000FFFFFu);
+    }
+    return (firstLevel & 0xFFFF0000u) | (addr & 0xFFFFu);
+}
+
+uint32_t StarletArm::TranslateForAccess(uint32_t addr) const {
+    return TranslateVirtualAddress(addr);
 }
 
 // Memory access
 bool StarletArm::InMemory(uint32_t address, size_t size) const {
-    return uint64_t(address) + size <= memory.size();
+    return memory.IsMapped(address, size);
 }
 uint8_t StarletArm::Read8(uint32_t address) const {
-    if (InMemory(address, 1)) return memory[address];
-    if (mmioRead) return uint8_t(mmioRead(address) & 0xFF);
-    throw std::runtime_error("ARM memory fault read8");
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 1)) return memory[phys];
+    if (mmioReadAccess) return uint8_t(mmioReadAccess(phys, 1) & 0xFF);
+    if (mmioRead) return uint8_t(mmioRead(phys) & 0xFF);
+    throw std::runtime_error(StarletAccessFault("read8", phys));
 }
 uint16_t StarletArm::Read16(uint32_t address) const {
-    if (InMemory(address, 2)) return uint16_t((memory[address] << 8) | memory[address + 1]);
-    if (mmioRead) return uint16_t(mmioRead(address) & 0xFFFF);
-    throw std::runtime_error("ARM memory fault read16");
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 2)) return uint16_t((memory[phys] << 8) | memory[phys + 1]);
+    if (mmioReadAccess) return uint16_t(mmioReadAccess(phys, 2) & 0xFFFF);
+    if (mmioRead) return uint16_t(mmioRead(phys) & 0xFFFF);
+    throw std::runtime_error(StarletAccessFault("read16", phys));
 }
 uint32_t StarletArm::Read32(uint32_t address) const {
-    if (InMemory(address, 4) && (address % 4 == 0)) {
-        return (uint32_t(memory[address]) << 24) | (uint32_t(memory[address + 1]) << 16) |
-               (uint32_t(memory[address + 2]) << 8) | memory[address + 3];
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 4) && (phys % 4 == 0)) {
+        return (uint32_t(memory[phys]) << 24) | (uint32_t(memory[phys + 1]) << 16) |
+               (uint32_t(memory[phys + 2]) << 8) | memory[phys + 3];
     }
-    if (mmioRead) return mmioRead(address);
-    if (InMemory(address, 4)) {
-        return (uint32_t(memory[address]) << 24) | (uint32_t(memory[address + 1]) << 16) |
-               (uint32_t(memory[address + 2]) << 8) | memory[address + 3];
+    if (mmioReadAccess) return mmioReadAccess(phys, 4);
+    if (mmioRead) return mmioRead(phys);
+    if (InMemory(phys, 4)) {
+        return (uint32_t(memory[phys]) << 24) | (uint32_t(memory[phys + 1]) << 16) |
+               (uint32_t(memory[phys + 2]) << 8) | memory[phys + 3];
     }
-    throw std::runtime_error("ARM memory fault read32");
+    throw std::runtime_error(StarletAccessFault("read32", phys));
 }
 void StarletArm::Write8(uint32_t address, uint8_t value) {
-    if (InMemory(address, 1)) { memory[address] = value; return; }
-    if (mmioWrite) { mmioWrite(address, value); return; }
-    throw std::runtime_error("ARM memory fault write8");
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 1)) { memory[phys] = value; return; }
+    if (mmioWriteAccess) { mmioWriteAccess(phys, 1, value); return; }
+    if (mmioWrite) { mmioWrite(phys, value); return; }
+    throw std::runtime_error(StarletAccessFault("write8", phys));
 }
 void StarletArm::Write16(uint32_t address, uint16_t value) {
-    if (InMemory(address, 2)) { memory[address] = uint8_t(value >> 8); memory[address + 1] = uint8_t(value); return; }
-    if (mmioWrite) { mmioWrite(address, value); return; }
-    throw std::runtime_error("ARM memory fault write16");
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 2)) { memory[phys] = uint8_t(value >> 8); memory[phys + 1] = uint8_t(value); return; }
+    if (mmioWriteAccess) { mmioWriteAccess(phys, 2, value); return; }
+    if (mmioWrite) { mmioWrite(phys, value); return; }
+    throw std::runtime_error(StarletAccessFault("write16", phys));
 }
 void StarletArm::Write32(uint32_t address, uint32_t value) {
-    if (InMemory(address, 4)) {
-        memory[address] = uint8_t(value >> 24);
-        memory[address + 1] = uint8_t(value >> 16);
-        memory[address + 2] = uint8_t(value >> 8);
-        memory[address + 3] = uint8_t(value);
+    const uint32_t phys = TranslateForAccess(address);
+    if (InMemory(phys, 4) && (phys % 4 == 0)) {
+        memory[phys] = uint8_t(value >> 24);
+        memory[phys + 1] = uint8_t(value >> 16);
+        memory[phys + 2] = uint8_t(value >> 8);
+        memory[phys + 3] = uint8_t(value);
         return;
     }
-    if (mmioWrite) { mmioWrite(address, value); return; }
-    throw std::runtime_error("ARM memory fault write32");
+    if (mmioWriteAccess) { mmioWriteAccess(phys, 4, value); return; }
+    if (mmioWrite) { mmioWrite(phys, value); return; }
+    throw std::runtime_error(StarletAccessFault("write32", phys));
 }
 
 void StarletArm::Load(const ArmElfImage& image) {
     for (auto& seg : image.segments) {
-        if (uint64_t(seg.address) + seg.memorySize > memory.size()) throw std::runtime_error("ARM ELF segment outside memory");
+        const uint32_t loadAddress = seg.physicalAddress ? seg.physicalAddress : seg.address;
+        if (uint64_t(loadAddress) + seg.memorySize > memory.size()) throw std::runtime_error("ARM ELF segment outside memory");
+        memory.MapRange(loadAddress, seg.memorySize);
         for (uint32_t i = 0; i < seg.fileSize; ++i) {
             if (seg.offset + i >= image.bytes.size()) throw std::runtime_error("ARM ELF segment data truncated");
-            memory[seg.address + i] = image.bytes[seg.offset + i];
+            memory[loadAddress + i] = image.bytes[seg.offset + i];
         }
-        for (uint32_t i = seg.fileSize; i < seg.memorySize; ++i) memory[seg.address + i] = 0;
+        for (uint32_t i = seg.fileSize; i < seg.memorySize; ++i) memory[loadAddress + i] = 0;
     }
-    // relocations
     for (auto& rel : image.relocations) {
-        uint32_t addr = rel.offset;
-        if (!InMemory(addr, 4)) continue;
-        uint32_t base = Read32(addr);
-        uint32_t S = 0;
-        switch (rel.type) {
-            case 2: // R_ARM_ABS32
-                Write32(addr, S + (uint32_t)rel.addend + base? 0 : 0); // not enough info; apply addend only
-                // Better: if REL, addend is in memory already; for RELA, add addend.
-                break;
-            default:
-                break;
-        }
-        (void)base;
-    }
-    // Simple relocation application for RELA ABS32:
-    for (auto& rel : image.relocations) {
-        if (rel.type == 2) { // ABS32
-            uint32_t val = (uint32_t)rel.addend;
-            // For REL, addend is stored in memory initially; add to it.
-            if (rel.addend == 0) {
-                // read existing
-                val = Read32(rel.offset);
-            } else {
-                val = Read32(rel.offset) + (uint32_t)rel.addend;
+        uint32_t relocationAddress = rel.offset;
+        if (!InMemory(relocationAddress, 4)) {
+            for (const auto& seg : image.segments) {
+                const uint32_t loadAddress = seg.physicalAddress ? seg.physicalAddress : seg.address;
+                if (rel.offset >= seg.address &&
+                    uint64_t(rel.offset) + 4 <= uint64_t(seg.address) + seg.memorySize) {
+                    relocationAddress = loadAddress + (rel.offset - seg.address);
+                    break;
+                }
             }
-            Write32(rel.offset, val);
+        }
+        if (rel.type == 2) { // ABS32
+            if (!InMemory(relocationAddress, 4)) throw std::runtime_error("ARM ABS32 relocation is outside Starlet address space.");
+            const uint32_t addend = image.type == 4 ? uint32_t(rel.addend) : Read32(relocationAddress);
+            Write32(relocationAddress, addend);
         } else if (rel.type == 3) { // REL32
-            uint32_t val = Read32(rel.offset) + (uint32_t)rel.addend - rel.offset;
-            Write32(rel.offset, val);
+            if (!InMemory(relocationAddress, 4)) throw std::runtime_error("ARM REL32 relocation is outside Starlet address space.");
+            const uint32_t addend = image.type == 4 ? uint32_t(rel.addend) : Read32(relocationAddress);
+            Write32(relocationAddress, addend - rel.offset);
         }
     }
     R[15] = image.entry;
@@ -229,6 +337,7 @@ void StarletArm::Load(const ArmElfImage& image) {
 
 void StarletArm::LoadBinary(const std::vector<uint8_t>& bytes, uint32_t address) {
     if (uint64_t(address) + bytes.size() > memory.size()) throw std::runtime_error("binary outside memory");
+    memory.MapRange(address, bytes.size());
     for (size_t i = 0; i < bytes.size(); ++i) memory[address + i] = bytes[i];
 }
 
@@ -447,20 +556,14 @@ void StarletArm::StepArm() {
     }
 
     // MSR / MRS
-    if ((ins & 0x0FBF0FFFu) == 0x010F0000u) { // MRS Rd, CPSR
+    if ((ins & 0x0FBF0FFFu) == 0x010F0000u) { // MRS Rd, CPSR/SPSR
         uint32_t rd = (ins >> 12) & 0xF;
-        if (rd == 15) R[15] = CPSR & ~3u;
-        else R[rd] = CPSR;
+        const uint32_t value = (ins & (1u << 22)) ? SPSR() : CPSR;
+        if (rd == 15) R[15] = value & ~3u;
+        else R[rd] = value;
         instructions++; return;
     }
-    if ((ins & 0x0FBF0FFFu) == 0x014F0000u) { // MRS Rd, SPSR
-        uint32_t rd = (ins >> 12) & 0xF;
-        uint32_t v = SPSR();
-        if (rd == 15) R[15] = v & ~3u;
-        else R[rd] = v;
-        instructions++; return;
-    }
-    if ((ins & 0x0FB0FFF0u) == 0x0120F000u) { // MSR (register) CPSR
+    if ((ins & 0x0FB0FFF0u) == 0x0120F000u) { // MSR (register), CPSR/SPSR
         uint32_t rm = ins & 0xF;
         uint32_t val = (rm == 15) ? (R[15] + 4) : R[rm];
         uint32_t mask = 0;
@@ -468,6 +571,11 @@ void StarletArm::StepArm() {
         if (ins & (1u << 17)) mask |= 0x0000FF00u; // x
         if (ins & (1u << 18)) mask |= 0x00FF0000u; // s
         if (ins & (1u << 19)) mask |= 0xFF000000u; // f
+        if (ins & (1u << 22)) {
+            uint32_t current = SPSR();
+            SetSPSR((current & ~mask) | (val & mask));
+            instructions++; return;
+        }
         // if privileged, allow control; if user, only flags
         uint32_t mode = Mode();
         bool privileged = (mode != 0x10);
@@ -487,24 +595,11 @@ void StarletArm::StepArm() {
         CPSR = (CPSR & ~0x1F) | (Mode());
         instructions++; return;
     }
-    if ((ins & 0x0FB0FFF0u) == 0x0160F000u) { // MSR SPSR
-        uint32_t rm = ins & 0xF;
-        uint32_t val = (rm == 15) ? (R[15] + 4) : R[rm];
-        uint32_t mask = 0;
-        if (ins & (1u << 16)) mask |= 0x000000FFu;
-        if (ins & (1u << 17)) mask |= 0x0000FF00u;
-        if (ins & (1u << 18)) mask |= 0x00FF0000u;
-        if (ins & (1u << 19)) mask |= 0xFF000000u;
-        uint32_t cur = SPSR();
-        cur = (cur & ~mask) | (val & mask);
-        SetSPSR(cur);
-        instructions++; return;
-    }
     // MSR immediate
     if ((ins & 0x0FB0F000u) == 0x0320F000u) {
         uint32_t val = ins & 0xFF;
         uint32_t rot = (ins >> 8) & 0xF;
-        val = (val >> (2 * rot)) | (val << (32 - 2 * rot));
+        if (rot != 0) val = (val >> (2 * rot)) | (val << (32 - 2 * rot));
         uint32_t mask = 0;
         if (ins & (1u << 16)) mask |= 0x000000FFu;
         if (ins & (1u << 17)) mask |= 0x0000FF00u;
@@ -789,9 +884,7 @@ void StarletArm::StepArm() {
     if ((ins & 0x0E000000u) == 0x0A000000u) {
         bool L = (ins >> 24) & 1;
         int32_t off = (int32_t)(ins & 0x00FFFFFFu) << 8 >> 6;
-        if (L) R[14] = R[15] - 4; // pc+4? 
-        // R[15] currently pc+4
-        R[14] = pc + 4;
+        if (L) R[14] = pc + 4;
         R[15] = R[15] + 4 + (uint32_t)off;
         instructions++; return;
     }
@@ -807,15 +900,22 @@ void StarletArm::StepArm() {
         (void)crm; (void)op;
         if (cp != 15) { instructions++; return; }
         if (L) { // MRC
-            uint32_t val = 0;
-            if (crn == 0) val = 0x41069265u; // ARM926EJ-S
-            else if (crn == 1) val = 0; // control
-            R[rd == 15 ? 15 : rd] = val; // if rd=15 write PC? unusual
-            if (rd == 15) R[15] = val & ~3u;
+            uint32_t val = GetCp15Register(crn);
+            if (crn == 0) val = CP15[0];
+            else if (crn == 1) val = CP15[1];
+            else if (crn == 2) val = TTBR0;
+            else if (crn == 3) val = DACR;
+            else if (crn == 5) val = DFSR;
+            else if (crn == 6) val = IFSR;
+            if (rd == 15) { R[15] = val & ~3u; }
+            else { R[rd] = val; }
         } else { // MCR
             uint32_t val = (rd == 15) ? (R[15] + 4) : R[rd];
-            (void)val; (void)crn;
-            // store control etc. no-op for now
+            SetCp15Register(crn, val);
+            if (crn == 1) {
+                mmuEnabled = (val & 1u) != 0u;
+                alignmentFaultsEnabled = (val & 0x2u) != 0u;
+            }
         }
         instructions++; return;
     }

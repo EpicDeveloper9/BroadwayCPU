@@ -1,0 +1,1 @@
+/opt/devkitpro/msys2/usr/bin/c++.exe -O3 -DNDEBUG -Wl,--enable-auto-import CMakeFiles/homebrew_gx_probe.dir/tools/homebrew_gx_probe.cpp.o -o homebrew_gx_probe.exe -Wl,--out-implib,libhomebrew_gx_probe.dll.a -Wl,--major-image-version,0,--minor-image-version,0  libbroadwaycpu_core.a

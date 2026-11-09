@@ -6,6 +6,8 @@
 #include <dxgiformat.h>
 #include <algorithm>
 #include <atomic>
+#include <fstream>
+#include <limits>
 #include <new>
 #include <stdexcept>
 
@@ -81,6 +83,36 @@ void VideoOutputWindow::ClearFrame() {
     currentFrame.reset();
     frameBitmap.Reset();
     if (window) InvalidateRect(window, nullptr, FALSE);
+}
+
+void VideoOutputWindow::SaveCurrentFrameBmp(const std::filesystem::path& path) const {
+    if (!currentFrame) throw std::runtime_error("No Wii video frame is available to capture.");
+    BGRAFrame converted = ConvertToBGRA8(*currentFrame);
+    if (converted.width > LONG_MAX || converted.height > LONG_MAX ||
+        converted.bytes.size() > std::numeric_limits<DWORD>::max() - sizeof(BITMAPFILEHEADER) -
+            sizeof(BITMAPINFOHEADER))
+        throw std::length_error("The Wii video frame is too large to save as a BMP.");
+
+    BITMAPFILEHEADER fileHeader{};
+    fileHeader.bfType = 0x4D42;
+    fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    fileHeader.bfSize = fileHeader.bfOffBits + DWORD(converted.bytes.size());
+    BITMAPINFOHEADER infoHeader{};
+    infoHeader.biSize = sizeof(infoHeader);
+    infoHeader.biWidth = LONG(converted.width);
+    infoHeader.biHeight = -LONG(converted.height);
+    infoHeader.biPlanes = 1;
+    infoHeader.biBitCount = 32;
+    infoHeader.biCompression = BI_RGB;
+    infoHeader.biSizeImage = DWORD(converted.bytes.size());
+
+    std::ofstream output(path, std::ios::binary);
+    if (!output) throw std::runtime_error("Could not create the Wii video capture file.");
+    output.write(reinterpret_cast<const char*>(&fileHeader), sizeof(fileHeader));
+    output.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
+    output.write(reinterpret_cast<const char*>(converted.bytes.data()),
+        std::streamsize(converted.bytes.size()));
+    if (!output) throw std::runtime_error("Could not write the Wii video capture file.");
 }
 
 void VideoOutputWindow::ToggleFullscreen() {
@@ -260,7 +292,10 @@ void VideoOutputWindow::Draw(HWND hwnd) {
         }
         const HRESULT hr = renderTarget->EndDraw();
         if (hr == D2DERR_RECREATE_TARGET) DestroyDeviceResources();
-        else if (SUCCEEDED(hr)) paintedWithDirect2D = true;
+        else if (SUCCEEDED(hr)) {
+            paintedWithDirect2D = true;
+            if (frameBitmap) ++framePresentations;
+        }
     }
     if (!paintedWithDirect2D) {
         HBRUSH black = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));

@@ -1,0 +1,1 @@
+/opt/devkitpro/msys2/usr/bin/c++.exe -O3 -DNDEBUG -Wl,--enable-auto-import CMakeFiles/gh3_dol_scan.dir/tools/gh3_dol_scan.cpp.o -o gh3_dol_scan.exe -Wl,--out-implib,libgh3_dol_scan.dll.a -Wl,--major-image-version,0,--minor-image-version,0  libbroadwaycpu_core.a

@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <commctrl.h>
+#include <shellapi.h>
 #include <shlobj.h>
 #include <windowsx.h>
 #include <cstdint>
@@ -28,6 +29,8 @@
 #include "wii_boot.hpp"
 #include "disc_image.hpp"
 #include "wii_firmware.hpp"
+#include "arm_elf.hpp"
+#include "starlet_hardware.hpp"
 
 #pragma comment(lib, "Comdlg32.lib")
 #pragma comment(lib, "Comctl32.lib")
@@ -45,8 +48,20 @@ constexpr UINT kFirmwareCommand = 113;
 constexpr UINT kVideoDiagnosticCommand = 202;
 
 std::unique_ptr<Broadway::CPU> g_cpu;
+std::unique_ptr<Broadway::StarletArm> g_starlet;
+std::unique_ptr<Broadway::StarletHardware> g_starletHardware;
+std::unique_ptr<Broadway::ArmElfImage> g_iosImage;
 std::unique_ptr<Broadway::GXProcessor> g_gx;
 std::unique_ptr<Broadway::EXIController> g_exi;
+void AttachStarletHardware(Broadway::StarletArm& arm) {
+    if (!g_starletHardware) g_starletHardware = std::make_unique<Broadway::StarletHardware>();
+    arm.mmioReadAccess = [](uint32_t address, unsigned width) {
+        return g_starletHardware->Read(address, width);
+    };
+    arm.mmioWriteAccess = [](uint32_t address, unsigned width, uint32_t value) {
+        g_starletHardware->Write(address, width, value);
+    };
+}
 class MmioHub : public Broadway::MemoryMappedDevice {
 public:
     explicit MmioHub(Broadway::GXProcessor* gxDevice) : gx(gxDevice), storage(0x10000, 0) {}
@@ -96,6 +111,7 @@ HWND g_stopButton = nullptr;
 HWND g_keyEdit = nullptr;
 std::wstring g_loadedPath;
 std::wstring g_isoPath;
+std::filesystem::path g_capturePath;
 Broadway::WiiFirmwareInventory g_firmwareInventory;
 bool g_firmwareConfigured = false;
 std::wstring g_statusText = L"Ready — open a Wii ISO or executable to begin.";
@@ -149,13 +165,26 @@ void ConfigureWiiSystemData(HWND owner) {
     }
     try {
         auto inventory = Broadway::WiiFirmwareInspector::InspectNand(std::filesystem::path(path));
+        if (!inventory.iosBootContentPresent)
+            throw std::runtime_error("The System Menu's required IOS boot content is missing.");
+        std::ifstream iosFile(inventory.iosBootContentPath, std::ios::binary);
+        if (!iosFile) throw std::runtime_error("Could not open the required IOS boot content.");
+        const std::vector<uint8_t> iosBytes((std::istreambuf_iterator<char>(iosFile)), {});
+        auto iosImage = std::make_unique<Broadway::ArmElfImage>(
+            Broadway::ArmElfLoader::ParseIosBootContent(iosBytes));
+        auto starlet = std::make_unique<Broadway::StarletArm>();
+        g_starletHardware = std::make_unique<Broadway::StarletHardware>();
+        AttachStarletHardware(*starlet);
+        starlet->Load(*iosImage);
         g_firmwareInventory = std::move(inventory);
         g_firmwareConfigured = true;
+        g_iosImage = std::move(iosImage);
+        g_starlet = std::move(starlet);
         const auto ios = g_firmwareInventory.requiredIosTitleId
             ? (L"Required IOS title 0x" + Hex(uint32_t(g_firmwareInventory.requiredIosTitleId)))
             : L"Required IOS unknown";
-        SetStatus(L"Wii system data at " + std::wstring(path) + L": " + ToWide(g_firmwareInventory.status) + L"  |  " + ios +
-                  L"  |  files are inventoried only; encrypted content is not verified or executed.");
+        SetStatus(L"Loaded genuine IOS boot ELF for Starlet at 0x" + Hex(g_starlet->R[15]) +
+                  L"  |  " + ios + L"  |  Start executes IOS; boot2 placement for its pre-ELF payload, IPC services and title launch remain unimplemented.");
     } catch (const std::exception& e) {
         g_lastError = ToWide(e.what());
         SetStatus(L"Wii system data inspection failed: " + g_lastError);
@@ -265,53 +294,88 @@ bool BootWiiIso(bool startRunning) {
         return false;
     }
 }
-void LoadExecutable(HWND owner) {
-    wchar_t path[MAX_PATH]{};
-    OPENFILENAMEW ofn{}; ofn.lStructSize = sizeof(ofn); ofn.hwndOwner = owner;
-    ofn.lpstrFilter = L"Wii executables (*.dol;*.elf;*.bin)\0*.dol;*.elf;*.bin\0DOL files (*.dol)\0*.dol\0ELF files (*.elf)\0*.elf\0All files (*.*)\0*.*\0\0";
-    ofn.lpstrFile = path; ofn.nMaxFile = MAX_PATH; ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-    ofn.lpstrTitle = L"Load a Broadway executable";
-    if (!GetOpenFileNameW(&ofn)) return;
+void LoadExecutableFromPath(HWND owner, const std::filesystem::path& path) {
     try {
         std::ifstream f(path, std::ios::binary);
         if (!f) throw std::runtime_error("Could not open the selected file.");
         std::vector<uint8_t> bytes;
         bytes.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
         if (bytes.empty()) throw std::runtime_error("The selected file is empty.");
-        std::wstring ext(path); const size_t dot = ext.find_last_of(L'.');
-        if (dot != std::wstring::npos) ext = ext.substr(dot);
+        std::wstring ext = path.extension().wstring();
         for (auto& c : ext) c = wchar_t(towlower(c));
         Broadway::ExecutableFormat format = Broadway::ExecutableFormat::Raw;
         if (ext == L".dol") format = Broadway::ExecutableFormat::Dol;
         else if (ext == L".elf" || (bytes.size() >= 4 && bytes[0] == 0x7F && bytes[1] == 'E'))
             format = Broadway::ExecutableFormat::Elf;
         const auto loadResult = Broadway::ExecutableLoader::Load(*g_cpu, bytes, format, kRawLoadAddress);
+        if (format != Broadway::ExecutableFormat::Raw)
+            g_cpu->registers.MSR = Broadway::CPURegisters::MSR_FP;
         g_gx->Reset();
         g_exi->Reset();
         g_entryPoint = loadResult.entryPoint;
-        g_cpu->registers.PC = g_entryPoint; g_loaded = true; g_loadedPath = path;
+        g_cpu->registers.PC = g_entryPoint; g_loaded = true; g_loadedPath = path.wstring();
         g_isoSelected = false; g_isoBooted = false; g_isoBoot.reset();
         StopRun();
-        SetStatus(L"Loaded " + std::wstring(path) + L"  |  Entry: 0x" + Hex(g_entryPoint));
+        SetStatus(L"Loaded " + g_loadedPath + L"  |  Entry: 0x" + Hex(g_entryPoint));
     } catch (const std::exception& e) {
         g_lastError = ToWide(e.what());
         SetStatus(L"Load failed: " + g_lastError);
         MessageBoxW(owner, g_lastError.c_str(), L"BroadwayCPU — Load error", MB_ICONERROR | MB_OK);
     }
 }
+void LoadExecutable(HWND owner) {
+    wchar_t path[MAX_PATH]{};
+    OPENFILENAMEW ofn{}; ofn.lStructSize = sizeof(ofn); ofn.hwndOwner = owner;
+    ofn.lpstrFilter = L"Wii executables (*.dol;*.elf;*.bin)\0*.dol;*.elf;*.bin\0DOL files (*.dol)\0*.dol\0ELF files (*.elf)\0*.elf\0All files (*.*)\0*.*\0\0";
+    ofn.lpstrFile = path; ofn.nMaxFile = MAX_PATH; ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+    ofn.lpstrTitle = L"Load a Broadway executable";
+    if (GetOpenFileNameW(&ofn))
+        LoadExecutableFromPath(owner, std::filesystem::path(path));
+}
 void ExecuteStep() {
-    if (!g_loaded) { SetStatus(L"Load a DOL, ELF or raw binary first."); return; }
-    try { g_cpu->Step(); SetStatus(L"Executed instruction " + std::to_wstring(g_cpu->InstructionsExecuted()) + L"  |  PC: 0x" + Hex(g_cpu->registers.PC)); }
+    if (!g_loaded && !g_starlet) { SetStatus(L"Load a Broadway executable or configure Wii system data first."); return; }
+    try {
+        if (g_loaded) {
+            g_cpu->Step();
+            SetStatus(L"Broadway instruction " + std::to_wstring(g_cpu->InstructionsExecuted()) +
+                      L"  |  PC: 0x" + Hex(g_cpu->registers.PC));
+        } else {
+            g_starlet->Step();
+            SetStatus(L"IOS Starlet instruction " + std::to_wstring(g_starlet->InstructionCount()) +
+                      L"  |  PC: 0x" + Hex(g_starlet->R[15]) +
+                      L"  |  CPSR: 0x" + Hex(g_starlet->CPSR));
+        }
+    }
     catch (const std::exception& e) { StopRun(); g_lastError = ToWide(e.what()); SetStatus(L"CPU exception: " + g_lastError); }
     Refresh();
 }
 void ToggleRun() {
-    if (!g_loaded) { SetStatus(L"Load an executable before starting emulation."); return; }
-    if (g_running) { StopRun(); SetStatus(L"Paused at 0x" + Hex(g_cpu->registers.PC)); }
-    else { g_running = true; SetWindowTextW(g_runButton, L"Pause"); SetTimer(g_window, kRunTimer, 15, nullptr); SetStatus(L"Running..."); }
+    if (!g_loaded && !g_starlet) { SetStatus(L"Load an executable or configure Wii system data before starting emulation."); return; }
+    if (g_running) {
+        StopRun();
+        SetStatus(g_loaded ? L"Paused Broadway at 0x" + Hex(g_cpu->registers.PC)
+                           : L"Paused Starlet at 0x" + Hex(g_starlet->R[15]));
+    }
+    else {
+        g_running = true;
+        SetWindowTextW(g_runButton, L"Pause");
+        SetTimer(g_window, kRunTimer, 15, nullptr);
+        SetStatus(g_starlet && !g_loaded ? L"Running genuine IOS guest instructions on Starlet..." : L"Running...");
+    }
 }
 void ResetCPU() {
-    StopRun(); if (!g_loaded) { SetStatus(L"Nothing is loaded."); return; }
+    StopRun();
+    if (g_starlet && g_iosImage) {
+        g_starlet = std::make_unique<Broadway::StarletArm>();
+        if (g_starletHardware) g_starletHardware->Reset();
+        AttachStarletHardware(*g_starlet);
+        g_starlet->Load(*g_iosImage);
+    }
+    if (!g_loaded) {
+        SetStatus(g_starlet ? L"Starlet reset to the genuine IOS ELF entry point." : L"Nothing is loaded.");
+        Refresh();
+        return;
+    }
     if (g_isoSelected) {
         g_isoBooted = false;
         BootWiiIso(false);
@@ -427,6 +491,29 @@ void PaintMain(HWND hwnd) {
             for(int col=0;col<16;++col){ wchar_t b[4]; try{swprintf_s(b,L"%02X ",g_cpu->memory.Read8(addr+uint32_t(row*16+col)));}catch(...){wcscpy_s(b,L"?? ");} wcscat_s(line,b); }
             DrawTextLine(dc,dx,y,line,RGB(163,177,196),mono); y+=18;
         }
+    } else if (g_starlet) {
+        DrawTextLine(dc,regs.left+16,regs.top+58,L"GENUINE IOS GUEST ON STARLET",RGB(106,190,255),mono);
+        wchar_t line[160]{};
+        swprintf_s(line,L"PC  %08X    CPSR %08X",g_starlet->R[15],g_starlet->CPSR);
+        DrawTextLine(dc,regs.left+16,regs.top+91,line,RGB(255,203,112),mono);
+        swprintf_s(line,L"Mode %02X    State %s",g_starlet->Mode(),g_starlet->Thumb()?L"Thumb":L"ARM");
+        DrawTextLine(dc,regs.left+16,regs.top+116,line,RGB(205,214,226),mono);
+        swprintf_s(line,L"r0 %08X  r1 %08X",g_starlet->R[0],g_starlet->R[1]);
+        DrawTextLine(dc,regs.left+16,regs.top+141,line,RGB(205,214,226),mono);
+        swprintf_s(line,L"r2 %08X  r3 %08X",g_starlet->R[2],g_starlet->R[3]);
+        DrawTextLine(dc,regs.left+16,regs.top+166,line,RGB(205,214,226),mono);
+        DrawTextLine(dc,regs.left+16,regs.top+204,
+                     (L"IOS instructions executed: " + std::to_wstring(g_starlet->InstructionCount())).c_str(),
+                     RGB(205,214,226),mono);
+        DrawTextLine(dc,dis.left+16,dis.top+58,L"STARLET ARM INSTRUCTIONS",RGB(106,190,255),mono);
+        uint32_t pc=g_starlet->R[15];
+        for(int i=0;i<12;++i){
+            uint32_t address=pc+uint32_t(i*(g_starlet->Thumb()?2:4));
+            uint32_t raw=0;
+            try{raw=g_starlet->Thumb()?g_starlet->Read16(address):g_starlet->Read32(address);}catch(...){}
+            swprintf_s(line,L"%08X  %08X",address,raw);
+            DrawTextLine(dc,dis.left+16,dis.top+91+i*23,line,address==pc?RGB(255,205,112):RGB(205,214,226),mono);
+        }
     } else {
         DrawTextLine(dc,regs.left+16,regs.top+58,L"No executable loaded.",RGB(177,190,207),mono);
         DrawTextLine(dc,regs.left+16,regs.top+88,L"Use File > Load Executable to open a Wii DOL or ELF.",RGB(130,148,170),mono);
@@ -453,7 +540,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     case WM_COMMAND:
-        switch(LOWORD(wp)){case 100:LoadExecutable(hwnd);break;case kOpenWiiIsoCommand:OpenWiiIso(hwnd);break;case kFirmwareCommand:ConfigureWiiSystemData(hwnd);break;case 101:if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();break;case kStopCommand:StopRun();SetStatus(L"Stopped at 0x"+Hex(g_cpu->registers.PC));break;case 102:if(!g_running)ExecuteStep();break;case 103:ResetCPU();break;case 105:DestroyWindow(hwnd);break;case 200:g_selectedTab=1-g_selectedTab;Refresh();break;case kVideoOutputCommand:OpenVideoOutput();break;case kVideoDiagnosticCommand:ToggleVideoDiagnostic();break;}
+        switch(LOWORD(wp)){case 100:LoadExecutable(hwnd);break;case kOpenWiiIsoCommand:OpenWiiIso(hwnd);break;case kFirmwareCommand:ConfigureWiiSystemData(hwnd);break;case 101:if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();break;case kStopCommand:StopRun();SetStatus(g_loaded?L"Stopped Broadway at 0x"+Hex(g_cpu->registers.PC):(g_starlet?L"Stopped Starlet at 0x"+Hex(g_starlet->R[15]):L"Stopped."));break;case 102:if(!g_running)ExecuteStep();break;case 103:ResetCPU();break;case 105:DestroyWindow(hwnd);break;case 200:g_selectedTab=1-g_selectedTab;Refresh();break;case kVideoOutputCommand:OpenVideoOutput();break;case kVideoDiagnosticCommand:ToggleVideoDiagnostic();break;}
         return 0;
     case WM_TIMER:
         if(wp==kVideoDiagnosticTimer && g_videoDiagnosticEnabled) {
@@ -461,9 +548,41 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
         if(wp==kRunTimer && g_running) {
-            try { g_cpu->Run(1000); if(g_cpu->halted){StopRun();SetStatus(L"CPU halted.");} else if(g_cpu->InstructionsExecuted()%10000<1000) SetStatus(L"Running — " + std::to_wstring(g_cpu->InstructionsExecuted()) + L" instructions"); }
+            try {
+                if (g_loaded) g_cpu->Run(1000);
+                if (g_starlet) g_starlet->Run(1000);
+                if (g_loaded && g_cpu->halted && !g_starlet) {
+                    StopRun();
+                    SetStatus(L"CPU halted.");
+                } else if (g_starlet && g_starlet->InstructionCount() % 10000 < 1000) {
+                    SetStatus(L"IOS Starlet PC 0x" + Hex(g_starlet->R[15]) +
+                        L" CPSR 0x" + Hex(g_starlet->CPSR) +
+                        L" instructions " + std::to_wstring(g_starlet->InstructionCount()) +
+                        L" | Broadway instructions " +
+                        std::to_wstring(g_loaded ? g_cpu->InstructionsExecuted() : 0));
+                } else if (g_loaded && g_cpu->InstructionsExecuted() % 10000 < 1000) {
+                    SetStatus(L"Running — " + std::to_wstring(g_cpu->InstructionsExecuted()) +
+                        L" instructions | GX commands " + std::to_wstring(g_gx->CommandsProcessed()) +
+                        L" | primitives " + std::to_wstring(g_gx->PrimitivesSubmitted()) +
+                        L" | frames " + std::to_wstring(g_gx->FramesCopied()) +
+                        L" | Video Output presents " +
+                        std::to_wstring(g_videoOutput ? g_videoOutput->FramePresentations() : 0) +
+                        L" | video " +
+                        (g_videoOutput && g_videoOutput->HasFrame() ? L"frame" : L"none"));
+                }
+                if (!g_capturePath.empty() && g_videoOutput && g_videoOutput->HasFrame()) {
+                    try {
+                        g_videoOutput->SaveCurrentFrameBmp(g_capturePath);
+                        SetStatus(L"Saved current Video Output frame to " + g_capturePath.wstring());
+                    } catch (const std::exception& e) {
+                        g_lastError = ToWide(e.what());
+                        SetStatus(L"Video capture failed: " + g_lastError);
+                    }
+                    g_capturePath.clear();
+                }
+            }
             catch(const Broadway::CPUException& e){StopRun();g_lastError=ToWide(e.what());uint32_t raw=0;try{raw=g_cpu->memory.Read32(e.FaultPC());}catch(...){}SetStatus(L"CPU stopped at 0x"+Hex(e.FaultPC())+L" raw 0x"+Hex(raw)+L": "+g_lastError);}
-            catch(const std::exception& e){StopRun();g_lastError=ToWide(e.what());SetStatus(L"CPU exception: "+g_lastError);}
+            catch(const std::exception& e){StopRun();g_lastError=ToWide(e.what());SetStatus(g_starlet && !g_loaded?L"Starlet stopped at 0x"+Hex(g_starlet->R[15])+L": "+g_lastError:L"CPU exception: "+g_lastError);}
             Refresh();
         }
         return 0;
@@ -472,6 +591,64 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_DESTROY: StopRun(); KillTimer(hwnd,kVideoDiagnosticTimer); g_videoDiagnosticEnabled=false; g_videoOutput.reset(); if(g_cpu) g_cpu->memory.AttachMmioDevice(nullptr); g_exi.reset(); g_gx.reset(); g_videoFrames.Clear(); PostQuitMessage(0); return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
+}
+
+bool ProcessCommandLine(HWND owner) {
+    int argumentCount = 0;
+    LPWSTR* arguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
+    if (!arguments) {
+        SetStatus(L"Could not parse command-line arguments.");
+        return false;
+    }
+
+    std::filesystem::path executablePath;
+    std::filesystem::path capturePath;
+    bool run = false;
+    bool showVideo = false;
+    std::wstring error;
+    for (int i = 1; i < argumentCount; ++i) {
+        const std::wstring argument = arguments[i];
+        if (argument == L"--load") {
+            if (i + 1 >= argumentCount || arguments[i + 1][0] == L'\0') {
+                error = L"--load requires an executable path.";
+                break;
+            }
+            executablePath = arguments[++i];
+        } else if (argument == L"--run") {
+            run = true;
+        } else if (argument == L"--video") {
+            showVideo = true;
+        } else if (argument == L"--capture") {
+            if (i + 1 >= argumentCount || arguments[i + 1][0] == L'\0') {
+                error = L"--capture requires an output file path.";
+                break;
+            }
+            capturePath = arguments[++i];
+            showVideo = true;
+        } else {
+            error = L"Usage: BroadwayCPU.exe [--load <DOL-or-ELF>] [--run] [--video] [--capture <BMP-path>]";
+            break;
+        }
+    }
+    if (error.empty() && (!run && !capturePath.empty()))
+        error = L"--capture requires --run.";
+    if (error.empty() && (run || !capturePath.empty()) && executablePath.empty())
+        error = L"--run and --capture require --load.";
+    LocalFree(arguments);
+
+    if (!error.empty()) {
+        SetStatus(error);
+        MessageBoxW(owner, error.c_str(), L"BroadwayCPU — Command line", MB_ICONERROR | MB_OK);
+        return false;
+    }
+    g_capturePath = std::move(capturePath);
+    if (!executablePath.empty()) {
+        LoadExecutableFromPath(owner, executablePath);
+        if (!g_loaded) return false;
+    }
+    if (showVideo) OpenVideoOutput();
+    if (run) ToggleRun();
+    return true;
 }
 }
 
@@ -497,6 +674,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     HMENU emu=CreatePopupMenu(); AppendMenuW(emu,MF_STRING,101,L"Start / Pause\tF5"); AppendMenuW(emu,MF_STRING,kStopCommand,L"Stop"); AppendMenuW(emu,MF_STRING,102,L"Single step\tF10"); AppendMenuW(emu,MF_STRING,103,L"Reset\tCtrl+R"); AppendMenuW(menu,MF_POPUP,(UINT_PTR)emu,L"CPU");
     HMENU tools=CreatePopupMenu(); AppendMenuW(tools,MF_STRING,kFirmwareCommand,L"Configure Wii system data..."); AppendMenuW(menu,MF_POPUP,(UINT_PTR)tools,L"Tools"); SetMenu(hwnd,menu);
     ShowWindow(hwnd,show); UpdateWindow(hwnd);
+    ProcessCommandLine(hwnd);
     MSG msg{}; while(GetMessageW(&msg,nullptr,0,0)>0){
         if(msg.message==WM_KEYDOWN){if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='V')OpenVideoOutput();else if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='D')ToggleVideoDiagnostic();else if((GetKeyState(VK_CONTROL)&0x8000)&&(GetKeyState(VK_SHIFT)&0x8000)&&msg.wParam=='O')OpenWiiIso(hwnd);else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='O')LoadExecutable(hwnd);else if(msg.wParam==VK_F5){if(g_isoSelected&&!g_isoBooted)BootWiiIso(true);else ToggleRun();}else if(msg.wParam==VK_F10&&!g_running)ExecuteStep();else if((GetKeyState(VK_CONTROL)&0x8000)&&msg.wParam=='R')ResetCPU();}
         TranslateMessage(&msg); DispatchMessageW(&msg);

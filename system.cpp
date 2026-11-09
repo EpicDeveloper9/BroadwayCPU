@@ -1,13 +1,8 @@
 #include "cpu.hpp"
 namespace Broadway {
-void CPU::ExecuteSystem(const Instruction&) {
-    // sc is an architectural program exception.  The saved PC is the
-    // instruction after sc; returning from the vector with rfi therefore
-    // resumes at the following instruction.  The boot ROM/OS normally
-    // installs the handler at 0x80000c00 (or the high vector when MSR[IP]
-    // is set).  Keep service dispatch out of the CPU core.
+void CPU::EnterException(uint32_t vector, uint32_t savedPC) {
     const uint32_t oldMsr = registers.MSR;
-    registers.SRR0 = registers.PC;
+    registers.SRR0 = savedPC;
     registers.SRR1 = oldMsr;
     constexpr uint32_t exceptionClearedBits =
         (1u << 18) | // POW
@@ -23,6 +18,12 @@ void CPU::ExecuteSystem(const Instruction&) {
         (1u << 1);   // RI
     const uint32_t prefix = (oldMsr & (1u << 6)) ? 0xFFF00000u : 0u;
     registers.MSR = oldMsr & ~exceptionClearedBits;
-    registers.PC = prefix | 0x00000C00u;
+    registers.PC = prefix | vector;
+}
+
+void CPU::ExecuteSystem(const Instruction&) {
+    // sc saves the following instruction so rfi resumes after the syscall.
+    // The guest OS remains responsible for installing and servicing the vector.
+    EnterException(0x00000C00u, registers.PC);
 }
 }

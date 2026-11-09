@@ -1,0 +1,1 @@
+/opt/devkitpro/msys2/usr/bin/c++.exe -O3 -DNDEBUG -Wl,--enable-auto-import CMakeFiles/starlet_trace.dir/tools/starlet_trace.cpp.o -o starlet_trace.exe -Wl,--out-implib,libstarlet_trace.dll.a -Wl,--major-image-version,0,--minor-image-version,0  libbroadwaycpu_core.a

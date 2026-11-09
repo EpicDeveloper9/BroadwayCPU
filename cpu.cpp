@@ -32,7 +32,11 @@ void CPU::Step() {
             throw CPUException(ExceptionKind::UnimplementedInstruction, lastInstructionPC,
                                std::string("Unsupported instruction: ") + Decoder::Name(ins));
         Execute(ins);
-    } catch (const CPUException&) {
+    } catch (const CPUException& exception) {
+        if (exception.Kind() == ExceptionKind::FloatingPointUnavailable) {
+            EnterException(0x800u, lastInstructionPC);
+            return;
+        }
         registers.PC = lastInstructionPC;
         throw;
     }
